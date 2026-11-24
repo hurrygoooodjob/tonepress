@@ -156,3 +156,19 @@ Object.assign(window.TonepressCatalogStrings, {
   "陶土纸棕墨": ["Terracotta paper, brown ink", "テラコッタ紙と茶インク", "테라코타색 종이와 갈색 잉크"],
   "冷纸蓝墨": ["Cool paper, blue ink", "青みの紙と青インク", "차가운 색 종이와 파란 잉크"]
 });
+
+Object.assign(window.TonepressCatalogStrings, {
+  "把素材的一部分镜像重复成网格，可旋转，也可让隔行偏移随时间变化。": [
+    "Make a mirrored grid from a portion of the source. Rotate it or animate the alternating row offset.",
+    "素材の一部を繰り返し反転してグリッドにします。回転や、交互の行のオフセットをアニメーションできます。",
+    "소재 일부를 반복해서 반전해 격자로 만듭니다. 회전하거나 교차하는 행의 오프셋을 움직일 수 있습니다."
+  ],
+  "沿放射线和同心环采样，把整帧切成扇形色块。": [
+    "Sample concentric rings and radial sectors to turn the whole frame into wedges of color.",
+    "同心円と放射状の区画からサンプリングして、画面全体をくさび形の色面にします。",
+    "동심원과 방사형 구역을 샘플링해 화면 전체를 부채꼴 색상 면으로 바꿉니다."
+  ],
+  "同心环间距": ["Ring spacing", "同心円の間隔", "동심원 간격"],
+  "径向块宽": ["Radial block size", "放射方向のブロック幅", "방사 방향 블록 너비"],
+  "扇形块宽": ["Sector block size", "扇形のブロック幅", "부채꼴 블록 너비"]
+});

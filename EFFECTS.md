@@ -4,12 +4,14 @@
 
 The collection matches 74 public effect names to 74 selectable Tonepress implementations. Eight use filters from the original library. The other 66 extend it to 131 unique effects. Open a row to try it on the built-in media.
 
+[Synchronized comparison of Data Mosh, Slit Scan and Feedback](https://hurrygoooodjob.github.io/tonepress/compare/) · [All 74 on the same photo and video](https://hurrygoooodjob.github.io/tonepress/compare/catalog/)
+
 ## Differences that affect the result
 
-- Data Mosh moves the preceding processed frame using estimated block motion. Slit Scan combines slices held in a bounded frame history. Play a moving video to see both. A seek starts a new history.
-- Half Tone opens Tonepress’s subtle true-color ink screen. Dither opens its four-tone ordered dither. The original settings and presets for both are preserved.
+- Data Mosh holds a decoded frame, accumulates local motion and refreshes blocks as prediction errors increase. Feedback starts with neutral geometry and hue. Slit Scan combines slices held in a bounded frame history. Play a moving video to see both. A seek starts a new history.
+- Within the Mosh-Pro collection, Half Tone offers monochrome and color separations, Pixelate has independent axes, and Dither has dedicated controls. The main studio still opens with its subtle true-color ink screen.
 - Push Draw and Mask Draw use editable 8 × 8 maps. Media places a second still image over the source. Texture accepts a texture image and includes generated paper. Uploaded layer images are scaled to a maximum edge of 768 pixels.
-- Audio Visualizer reads a browser-decodable soundtrack from an imported video up to 96 MiB. The included harbor clip is silent.
+- Audio Visualizer reads a browser-decodable soundtrack from an imported video up to 96 MiB. The frame-numbered motion study includes a synthesized audio track.
 - Masks modify the preceding layer. In first position they remove parts of the input itself, and PNG preserves the resulting transparency. Remove Background uses the local MediaPipe portrait model. It targets people, and fine hair, small figures and busy backgrounds can affect the matte.
 - Algorithms, color presets and controls were independently implemented. This collection covers effects. MIDI routing, the reference application’s timeline, groups and asset library are outside this version.
 
@@ -18,7 +20,7 @@ The collection matches 74 public effect names to 74 selectable Tonepress impleme
 | Effect | Tonepress implementation |
 | --- | --- |
 | [Data Mosh](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-data-mosh&sample=video) | Match motion across video frames and carry the previous processed image forward in blocks. A still photo passes through. |
-| [Optical Flow](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-optical-flow&sample=video) | Track local motion in video and smooth the displacements into a flowing distortion. A still photo passes through. |
+| [Optical Flow](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-optical-flow&sample=video) | Track motion in video and use local brightness to warp stills. |
 | [Feedback](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-feedback&sample=video) | Transform and overlay the preceding processed frame. Zoom and rotation can produce tunnels or spirals. |
 | [Watercolor](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-watercolor) | Soften and pool neighboring colors in a chosen direction. In video, colors from the previous frame briefly bleed through. |
 | [Slit Scan](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-slit-scan&sample=video) | Assemble narrow strips from different moments into one image, stretching moving subjects along the slices. |
@@ -70,7 +72,7 @@ The collection matches 74 public effect names to 74 selectable Tonepress impleme
 | Effect | Tonepress implementation |
 | --- | --- |
 | [Posterize](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-posterize) | Quantize continuous tones into a fixed number of bands. |
-| [Solarize](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-solarize) | Keep shadows intact and invert highlights above a threshold, with an optional tint. |
+| [Solarize](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-solarize) | Apply a folded luminance curve to create a solarized image. |
 | [Edges](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=edge) | Extract boundaries between light and dark to create line art. |
 | [Bleach](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-bleach) | Lift the midtones and compress highlights while controlling how much original color remains. |
 | [Sharpen](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-sharpen) | Use a Gaussian blur to isolate and strengthen edge contrast and detail. |
@@ -79,13 +81,13 @@ The collection matches 74 public effect names to 74 selectable Tonepress impleme
 
 | Effect | Tonepress implementation |
 | --- | --- |
-| [Pixelate](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=pixel) | Merge local colors into square blocks. |
+| [Pixelate](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=pixel) | Average the source image over a grid with independently adjustable axes. |
 | [Dot Matrix](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-dot-matrix) | Rebuild the image with display dots whose size follows source brightness. |
 | [Polar](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-polar) | Map image coordinates to angle and radius, with an adjustable hole and repeats around the ring. |
 | [8-Bit](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-8-bit) | Average color in pixel blocks, then match it to an original limited retro palette. |
-| [Half Tone](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=halftone) | Lay fine dots at 45° over the original colors. |
+| [Half Tone](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=halftone) | Screen the image using adjustable dots and monochrome or color separations. |
 | [LinoCut](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-linocut) | Carve tapered marks through the midtones while highlights reveal paper and shadows retain ink. |
-| [Dither](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=dither) | Ordered dithering recreates the four tones of a retro handheld. |
+| [Dither](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=dither) | Quantize the image with an adjustable dither pattern. |
 | [ASCII](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=ascii) | Redraw light and shadow with characters of varying density. |
 
 ## Color
@@ -94,10 +96,10 @@ The collection matches 74 public effect names to 74 selectable Tonepress impleme
 | --- | --- |
 | [Color Correction](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-color-correction) | Adjust brightness, contrast, saturation and hue independently, or invert the result. |
 | [Curves](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-curves) | Remap all colors or a single RGB channel with a smooth five-point curve. |
-| [Hue Cycle](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-hue-cycle) | Rotate all colors around the hue wheel, with an optional timed cycle. |
+| [Hue Cycle](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-hue-cycle) | Rotate hue continuously. The default direction and rate were measured on video; the starting phase may differ between studio sessions. |
 | [DuoTone](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-duotone) | Map source brightness continuously between a shadow color and a highlight color. |
 | [Rainbow](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-rainbow) | Index a color ramp by brightness, with directional offset and timed cycling. |
-| [InstaColor](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-instacolor) | Original grades combine tone curves, color temperature and fading. |
+| [InstaColor](https://hurrygoooodjob.github.io/tonepress/?mosh&effect=mosh-instacolor) | The default Etikate-style grade lifts shadows with separate channel curves calibrated on a fully loaded studio preview. Four other grades are available. |
 
 ## Optics
 

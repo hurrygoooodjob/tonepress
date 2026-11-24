@@ -232,5 +232,10 @@
     ]
   ]
 ].map(([name,en,ids])=>[name,en,ids.filter(id=>Object.hasOwn(names,id))]);
-  window.TonepressMosh={names,groups};
+  function layer(type) {
+    const base=TonepressLooks.layer(type);
+    if (!Object.hasOwn(names,type)) return base;
+    return {...base,profile:"mosh",...(window.TonepressMoshProfiles[type] || {})};
+  }
+  window.TonepressMosh={names,groups,layer};
 })();

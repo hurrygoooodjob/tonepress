@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mosh-Pro / 印相室逐项对照</title>
+  <link rel="stylesheet" href="compare.css">
+</head>
+<body>
+  <header class="masthead">
+    <div class="intro">
+      <h1>Mosh-Pro / 印相室逐项对照</h1>
+      <p id="summary"></p>
+    </div>
+    <nav class="head-links" aria-label="相关页面">
+      <a id="catalogLink" href="catalog/" hidden>74 项逐个看</a>
+      <a class="guide" href="https://moshpro.app/guides/effects/" target="_blank" rel="noopener noreferrer">官方效果手册 ↗</a>
+      <select id="reportLanguage" aria-label="语言" hidden><option value="en">English</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ko">한국어</option></select>
+    </nav>
+  </header>
+  <main class="layout">
+    <aside class="index" aria-label="效果目录">
+      <div class="filters">
+        <label for="search">查找效果</label>
+        <input id="search" type="search" placeholder="例如 Slit Scan" autocomplete="off">
+        <div class="selects">
+          <label>类别<select id="category"><option value="">全部类别</option></select></label>
+          <label>证据<select id="status"><option value="">全部状态</option><option value="sync">双边视频可同步</option><option value="original">有原版实测</option><option value="local">仅印相室实测</option><option value="missing">暂无实测</option></select></label>
+        </div>
+      </div>
+      <div id="effectList" class="effects"></div>
+    </aside>
+    <section class="detail" aria-labelledby="effectTitle">
+      <header class="effect-header">
+        <div><p id="group" class="group"></p><h2 id="effectTitle" tabindex="-1"></h2></div>
+        <div class="media-tabs" aria-label="媒体类型">
+          <button type="button" id="photoView" aria-pressed="false">照片</button>
+          <button type="button" id="videoView" aria-pressed="true">视频</button>
+          <label id="versionSwitch" hidden><span>印相室版本</span> <select id="version"><option value="v11">v11</option><option value="v10">v10</option></select></label>
+        </div>
+      </header>
+      <p id="effectStatus" class="effect-status" role="status"></p>
+      <p id="onlineNotes" class="online-notes" hidden></p>
+      <div id="playerControls" class="player-controls" hidden></div>
+      <div id="frameControls" class="frame-controls" hidden></div>
+      <div class="sides" id="sides"></div>
+      <section id="measurements" class="measurements" aria-label="画面差异"></section>
+      <details id="official" class="evidence"><summary>官方说明及示例</summary><div></div></details>
+      <details id="source" class="evidence"><summary>测试输入与取帧依据</summary><div></div></details>
+    </section>
+  </main>
+  <footer>
+    <p id="coverFooter">公开手册用于核实效果目录。本页媒体由浏览器本地播放。界面录屏如有水印和工具栏，会随录屏保留。</p>
+    <p><span id="attributionLabel">素材摄影</span> <a href="https://www.medcruiseguide.com/" target="_blank" rel="noopener noreferrer">MedCruiseGuide.com</a> · <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank" rel="noopener noreferrer">CC BY 2.0</a> · <a id="attributionSource" href="https://commons.wikimedia.org/wiki/File:Vernazza_and_the_sea,_Cinque_Terre,_Italy.jpg" target="_blank" rel="noopener noreferrer">摄影原作与授权</a><span id="attributionChanges">。测试视频含画面变换及合成音轨，处理结果应用了对应效果。</span></p>
+  </footer>
+  <script src="data.js"></script>
+  <script src="compare.js"></script>
+</body>
+</html>

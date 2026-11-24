@@ -49,23 +49,29 @@
   function define(id,english,name,description,scaleLabel,controls,options={}) {
     definitions["mosh-"+id]={english,name,description,scaleLabel,size:8,strength:82,group,groupEnglish,controls,overlay:id!=="texture",...options};
   }
-  define("media","Media","素材叠图","导入第二张静态图像并调整大小和位置。","素材尺寸",[image,x,y],{strength:100});
-  define("caption","Caption","字幕叠印","在画面上排印自己的文字，可调位置和颜色。","文字大小",[{kind:"text",key:"caption",label:"字幕内容",value:"TONEPRESS",maxLength:96},color("ink","文字颜色","#ffffff"),x,y]);
-  define("audio-visualizer","Audio Visualizer","音频频谱","频谱条读取视频里的声音。请导入含音轨且小于 96 MB 的视频。","频段数量",[tint,end,lin("gain","频谱增益",70,10,100)],{timed:true,strength:100});
+  define("media","Media","素材叠图","导入第二张静态图像并调整大小和位置。","素材尺寸",[image,x,y,select("tileMedia","重复素材",[["yes","重复平铺"],["no","单次放置"]])],{strength:100});
+  define("caption","Caption","字幕叠印","在画面上排印自己的文字，可调位置和颜色。","文字大小",[{kind:"text",key:"caption",label:"字幕内容",value:"",maxLength:96},color("ink","文字颜色","#ffffff"),x,y],{strength:100});
+  define("audio-visualizer","Audio Visualizer","音频频谱","频谱条读取视频里的声音。请导入含音轨且小于 96 MB 的视频。","频段数量",[color("tint","起始颜色","#00ff00"),color("middle","中间颜色","#ffff00"),color("end","终点颜色","#ff0000"),lin("gain","频谱增益",70,10,100)],{timed:true,strength:100});
   define("texture","Texture","表面纹理","在画面上乘印自选纹理图，或试用内置程序纸纹。","纹理尺度",[image,angle],{strength:65});
-  define("color-gradient","Color Gradient","渐变色层","叠加可自选两端颜色的线性或径向渐变。","渐变跨度",[tint,end,angle,select("shape","渐变形态",[["linear","直线渐变"],["radial","径向渐变"]])],{strength:68});
-  define("noise","Noise","云状噪声","多层平滑噪声在两种颜色之间流动。","噪声尺度",[tint,end,speed],{timed:true});
-  define("god-rays","God Rays","放射光束","从自定的光源位置投出长短交错的光束。","光束密度",[color("tint","光束颜色","#ffd984"),x,y,speed],{timed:true});
-  define("plasma","Plasma","等离子色场","相互干涉的色波随时间生成流动的色场。","色波密度",[tint,end,speed],{timed:true});
-  define("grid","Grid","网格发生器","以可旋转的移动网格或条纹覆盖画面。","网格间距",[tint,angle,speed,select("cross","网格样式",[["grid","双向网格"],["lines","单向条纹"]])],{timed:true});
-  define("dots","Dots","点阵发生器","平铺独立于原图亮度的圆点，可改变颜色、角度和大小。","圆点间距",[tint,angle,lin("dotSize","圆点比例",35,5,92)]);
+  define("color-gradient","Color Gradient","渐变色层","叠加可自选两端颜色的线性或径向渐变。","渐变跨度",
+    [color("tint","起始颜色","#d16ba5"),color("end","终点颜色","#c0c8ee"),angle,select("shape","渐变形态",[["linear","直线渐变"],["radial","径向渐变"]])],{strength:37});
+  define("noise","Noise","云状噪声","多层平滑噪声在两种颜色之间流动。","噪声尺度",
+    [color("tint","起始颜色","#0b0b2a"),color("end","终点颜色","#ffa8cb"),speed],{timed:true});
+  define("god-rays","God Rays","放射光束","从自定的光源位置投出长短交错的光束。","光束密度",
+    [color("tint","光束颜色","#fff2c4"),x,y,speed],{timed:true});
+  define("plasma","Plasma","等离子色场","相互干涉的色波随时间生成流动的色场。","色波密度",
+    [color("tint","起始颜色","#2b0a6b"),color("end","终点颜色","#ff9b32"),speed],{timed:true});
+  define("grid","Grid","网格发生器","以可旋转的移动网格或条纹覆盖画面。","网格间距",
+    [color("tint","起始颜色","#9cecfa"),lin("angle","图层角度",0,0,360),speed,select("cross","网格样式",[["grid","双向网格"],["lines","单向条纹"]])],{timed:true,strength:88});
+  define("dots","Dots","点阵发生器","平铺独立于原图亮度的圆点，可改变颜色、角度和大小。","圆点间距",
+    [color("tint","起始颜色","#ffc358"),lin("angle","图层角度",0,0,360),lin("dotSize","圆点比例",48,5,92)],{strength:95});
   const showMatte=select("showMatte","观看遮罩",[["hide","合成画面"],["show","黑白遮罩"]]);
   const mask={mask:true,strength:100,group:"局部遮罩",groupEnglish:"Layer masks"};
   define("mask","Mask","图像遮罩","导入灰度图。亮处保留上一层，暗处透出下方画面。","遮罩缩放",[image,invert],mask);
-  define("mask-blocks","Mask Blocks","动态块遮罩","使用随时间变化的矩形块局部显示上一层。","遮罩块大小",[speed,invert],{...mask,timed:true});
-  const centerBits=Array.from({length:64},(_,i)=>Math.hypot(i%8-3.5,Math.floor(i/8)-3.5)<2.8?"1":"0").join("");
-  define("mask-draw","Mask Draw","手绘遮罩","在八乘八画板上点亮要保留的区域，可导入黑白图案。","边缘羽化",[{kind:"bitmap",key:"stencil",label:"遮罩画板",value:centerBits,importLabel:"导入遮罩图案"},invert],mask);
-  define("chroma-key","ChromaKey","色度抠像","用色差和容差去除选定颜色；作为首层时导出透明区域。","颜色容差",[color("keyColor","要去除的颜色","#00ff00"),invert],mask);
+  define("mask-blocks","Mask Blocks","动态块遮罩","使用随时间变化的矩形块局部显示上一层。","遮罩块大小",[lin("speed","图案速度",25,0,100),invert],{...mask,timed:true});
+  const emptyStencil="0".repeat(64);
+  define("mask-draw","Mask Draw","手绘遮罩","在八乘八画板上点亮要保留的区域，可导入黑白图案。","边缘羽化",[{kind:"bitmap",key:"stencil",label:"遮罩画板",value:emptyStencil,importLabel:"导入遮罩图案"},invert],mask);
+  define("chroma-key","ChromaKey","色度抠像","用色差和容差去除选定颜色；作为首层时导出透明区域。","颜色容差",[color("keyColor","要去除的颜色","#46ff03"),invert],mask);
   for(const def of Object.values(definitions)) if(def.mask)def.controls.push(showMatte);
   const clamp=v=>Math.max(0,Math.min(1,v));
   const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
@@ -85,30 +91,46 @@
     const {width:w,height:h}=s,k=Math.min(1,480/Math.max(w,h));
     const c=buffer(art,Math.max(1,Math.round(w*k)),Math.max(1,Math.round(h*k)));
     const ctx=c.getContext("2d"),im=ctx.createImageData(c.width,c.height),p=im.data;
-    const a=rgb(s.tint),b=rgb(s.end),time=s.time*s.speed/80,freq=2+s.size*.65;
+    const a=rgb(s.tint),b=rgb(s.end),time=s.time*s.speed/80,freq=1+s.size*.47;
+    const plasma=s.type==="mosh-plasma";
     for(let yy=0,i=0;yy<c.height;yy++){
       const y=yy/c.height*freq;
       for(let xx=0;xx<c.width;xx++,i+=4){
         const x=xx/c.height*freq;
-        const t=s.type==="mosh-noise" ? .56*noise(x+time,y)+.29*noise(x*2.1,y*2.1-time)+.15*noise(x*4.4+time,y*4.4) :
-          .5+(Math.sin(x+time)+Math.sin(y*1.4-time)+Math.sin(2*Math.hypot(x-freq*.4+Math.cos(time),y-freq*.5)))/6;
-        for(let j=0;j<3;j++)p[i+j]=mix(a[j],b[j],t);p[i+3]=255;
+        const n=.56*noise(x+time,y)+.29*noise(x*2.1,y*2.1-time)+.15*noise(x*4.4+time,y*4.4);
+        const wave=clamp(.5+(Math.sin(x*1.34+time)+Math.sin(y*1.52-time)+Math.sin(2.5*Math.hypot(x-freq*.38+Math.cos(time)*.7,y-freq*.5)))/6);
+        const t=plasma ? Math.pow(wave,.7) : Math.pow(n,.61);
+        const peak=plasma ? Math.pow(Math.max(0,1-Math.abs(t-.59)*3),1.6) : 0;
+        const flare=[255,135,218];
+        for(let j=0;j<3;j++)p[i+j]=mix(mix(a[j],b[j],t),flare[j],peak*.68);
+        p[i+3]=255*(plasma ? .07+.9*peak : clamp((n-.13)*1.48));
       }
     }
     ctx.putImageData(im,0,0);art.getContext("2d").drawImage(c,0,0,w,h);
   }
   function spectrum(ctx,s) {
-    const buf=s.audioBuffer; if(!buf) return;
-    const samples=buf.getChannelData(0), start=Math.floor(s.time*buf.sampleRate), count=8+2*Math.round(s.size);
-    const len=512, step=s.width/count;
-    const grad=ctx.createLinearGradient(0,0,s.width,0);grad.addColorStop(0,s.tint);grad.addColorStop(1,s.end);ctx.fillStyle=grad;
-    for(let bar=0;bar<count;bar++){
-      const f=70*(Math.min(6500,buf.sampleRate*.45)/70)**(bar/(count-1)),coef=2*Math.cos(2*Math.PI*f/buf.sampleRate);
+    const audio=s.audioBuffer;
+    if(!audio) return;
+    const samples=audio.getChannelData(0), start=Math.floor(s.time*audio.sampleRate);
+    const bins=Math.max(8,Math.round(18+s.size*9)), half=Math.ceil(bins/2), fftSize=512;
+    const spacing=s.width/bins, mid=s.height/2;
+    // Mirror the same measured spectrum around the centre of the frame.
+    for(let band=0;band<half;band++){
+      const ratio=band/Math.max(1,half-1);
+      const hz=65*(Math.min(6800,audio.sampleRate*.45)/65)**ratio;
+      const coef=2*Math.cos(2*Math.PI*hz/audio.sampleRate);
       let q1=0,q2=0;
-      for(let n=0;n<len;n++){const z=(samples[start+n]||0)*(.5-.5*Math.cos(2*Math.PI*n/(len-1)))+coef*q1-q2;q2=q1;q1=z;}
-      const energy=Math.sqrt(Math.max(0,q1*q1+q2*q2-coef*q1*q2))/len;
-      const height=clamp(Math.log1p(energy*s.gain*2)/3)*s.height*.8;
-      ctx.fillRect(bar*step,s.height-height,step*.78,height);
+      for(let n=0;n<fftSize;n++){
+        const z=(samples[start+n]||0)*(.5-.5*Math.cos(2*Math.PI*n/(fftSize-1)))+coef*q1-q2;
+        q2=q1;q1=z;
+      }
+      const magnitude=Math.sqrt(Math.max(0,q1*q1+q2*q2-coef*q1*q2))/fftSize;
+      const length=s.height*.33*clamp(Math.log1p(magnitude*s.gain*2)/2.1)*(1-.7*ratio);
+      if(length<.8)continue;
+      const grad=ctx.createLinearGradient(0,mid-length,0,mid+length);
+      grad.addColorStop(0,s.end);grad.addColorStop(.25,s.middle);grad.addColorStop(.5,s.tint);
+      grad.addColorStop(.75,s.middle);grad.addColorStop(1,s.end);ctx.fillStyle=grad;
+      for(const x of [s.width/2-(band+1)*spacing,s.width/2+band*spacing])ctx.fillRect(x,mid-length,spacing*.83,length*2);
     }
   }
   function matte(input,art,s){
@@ -116,6 +138,7 @@
     ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
     if(s.type==="mosh-mask"){
       const img=getImage(s.image);
+      ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
       if(img){
         const scale=s.size/8;ctx.drawImage(img,w*(1-scale)/2,h*(1-scale)/2,w*scale,h*scale);
         const im=ctx.getImageData(0,0,w,h),p=im.data;
@@ -147,9 +170,12 @@
       }
       ctx.putImageData(im,0,0);
     } else {
-      const cell=Math.max(3,w*(.014+s.size*.009)),phase=Math.floor(s.time*s.speed/10);
+      const cell=Math.max(3,h*(.035+s.size*.012)),phase=Math.floor(s.time*s.speed/12);
       ctx.fillStyle="#000";
-      for(let y=0;y<h/cell;y++)for(let x=0;x<w/cell;x++)if(hash(x+phase*17,y)>.48)ctx.fillRect(Math.floor(x*cell),Math.floor(y*cell),Math.ceil(cell),Math.ceil(cell));
+      for(let y=0;y<h/cell;y++){
+        const strips=2+Math.floor(hash(phase,y)*5),width=w/strips;
+        for(let x=0;x<strips;x++)if(hash(x+phase*17,y)>.49)ctx.fillRect(Math.floor(x*width),Math.floor(y*cell),Math.ceil(width),Math.ceil(cell));
+      }
     }
     if(s.invert==="yes"){ctx.globalCompositeOperation="difference";ctx.fillStyle="white";ctx.fillRect(0,0,w,h);}
   }
@@ -159,15 +185,22 @@
     switch(s.type){
       case "mosh-media":{
         const img=getImage(s.image);if(!img)return;
-        const f=Math.min(w/img.width,h/img.height)*s.size/10;
-        ctx.drawImage(img,w*s.positionX/100-img.width*f/2,h*s.positionY/100-img.height*f/2,img.width*f,img.height*f);return;
+        const f=Math.min(w/img.width,h/img.height)*s.size/8;
+        const x=w*s.positionX/100-img.width*f/2,y=h*s.positionY/100-img.height*f/2;
+        if(s.tileMedia==="yes"){
+          const pattern=ctx.createPattern(img,"repeat");
+          pattern.setTransform(new DOMMatrix().translate(x,y).scaleSelf(f));
+          ctx.fillStyle=pattern;ctx.fillRect(0,0,w,h);
+        }else ctx.drawImage(img,x,y,img.width*f,img.height*f);
+        return;
       }
       case "mosh-caption":{
-        ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineJoin="round";
+        if(!s.caption)return;
+        ctx.textAlign="center";ctx.textBaseline="middle";
         const size=unit*(.035+.012*s.size);ctx.font="bold "+size+"px sans-serif";
-        ctx.strokeStyle="#141414";ctx.lineWidth=Math.max(1,size*.06);ctx.fillStyle=s.ink;
+        ctx.fillStyle=s.ink;
         const x=w*s.positionX/100,y=h*s.positionY/100;
-        ctx.strokeText(s.caption,x,y,w*.98);ctx.fillText(s.caption,x,y,w*.98);return;
+        ctx.fillText(s.caption,x,y,w*.98);return;
       }
       case "mosh-audio-visualizer":spectrum(ctx,s);return;
       case "mosh-color-gradient":{
@@ -183,7 +216,9 @@
           tex=buffer(art,128,128);const tc=tex.getContext("2d"),im=tc.createImageData(128,128);
           for(let y=0,i=0;y<128;y++)for(let x=0;x<128;x++,i+=4){
             const crease=Math.max(0,1-Math.abs((x+12*Math.sin(y*Math.PI/64))%64-32)/3);
-            const a=232+hash(x,y)*20-crease*49;im.data[i]=a;im.data[i+1]=a*.98;im.data[i+2]=a*.92;im.data[i+3]=255;
+            const grain=hash(x,y);
+            const a=s.videoSource?175+grain*51-crease*30:244+grain*11-crease*17;
+            im.data[i]=a;im.data[i+1]=a*.99;im.data[i+2]=a*.97;im.data[i+3]=255;
           }
           tc.putImageData(im,0,0);
         }
@@ -192,21 +227,40 @@
       }
       case "mosh-god-rays":{
         const cx=w*s.positionX/100,cy=h*s.positionY/100,len=Math.hypot(w,h),n=Math.round(15+s.size*4);
-        const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,len);grad.addColorStop(0,s.tint);grad.addColorStop(1,s.tint+"00");ctx.fillStyle=grad;
+        const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,len*.46);
+        grad.addColorStop(0,s.tint);grad.addColorStop(.23,s.tint+"b8");grad.addColorStop(1,s.tint+"00");
+        ctx.fillStyle=grad;
+        ctx.filter="blur("+Math.max(1,unit*.006)+"px)";
+        ctx.beginPath();
         for(let i=0;i<n;i++){
           const phi=(i+hash(i,1)*.5)*2*Math.PI/n+s.time*s.speed*.001,end=phi+(.12+.5*hash(i,2))*Math.PI/n;
-          ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+len*Math.cos(phi),cy+len*Math.sin(phi));ctx.lineTo(cx+len*Math.cos(end),cy+len*Math.sin(end));ctx.closePath();ctx.fill();
-        }return;
+          ctx.moveTo(cx,cy);ctx.lineTo(cx+len*Math.cos(phi),cy+len*Math.sin(phi));ctx.lineTo(cx+len*Math.cos(end),cy+len*Math.sin(end));ctx.closePath();
+        }
+        ctx.fill();
+        ctx.filter="none";
+        const core=ctx.createRadialGradient(cx,cy,0,cx,cy,unit*.22);
+        core.addColorStop(0,"#fffaf0");core.addColorStop(.16,s.tint+"e0");core.addColorStop(1,s.tint+"00");
+        ctx.fillStyle=core;ctx.fillRect(0,0,w,h);return;
       }
       default:{
-        const cell=Math.max(2,unit*(.008+s.size*.004)),diag=Math.ceil(Math.hypot(w,h)/cell)*cell,move=s.time*(s.speed||0)*cell/60%cell;
+        const grid=s.type==="mosh-grid";
+        const cell=Math.max(2,unit*(grid ? .042+s.size*.008 : .039+s.size*.004));
+        const diag=Math.ceil(Math.hypot(w,h)/cell)*cell,move=grid?s.time*(s.speed||0)*cell/120%cell:0;
         ctx.translate(w/2,h/2);ctx.rotate(r);ctx.translate(move,move);
-        ctx.lineWidth=Math.max(.7,cell*.065);ctx.strokeStyle=s.tint;ctx.fillStyle=s.tint;
+        ctx.lineWidth=Math.max(.7,cell*.038);ctx.strokeStyle=s.tint;
         ctx.beginPath();
-        if(s.type==="mosh-grid"){
+        if(grid){
           for(let v=-diag;v<=diag;v+=cell){ctx.moveTo(v,-diag);ctx.lineTo(v,diag);if(s.cross==="grid"){ctx.moveTo(-diag,v);ctx.lineTo(diag,v);}}ctx.stroke();
         } else {
-          for(let y=-diag;y<diag;y+=cell)for(let x=-diag;x<diag;x+=cell){const rad=cell*s.dotSize/200;ctx.moveTo(x+rad,y);ctx.arc(x,y,rad,0,Math.PI*2);}ctx.fill();
+          const count=Math.ceil(diag/cell);
+          const tint=ctx.createLinearGradient(-w/2,h/2,w/2,-h/2);
+          tint.addColorStop(0,s.tint);tint.addColorStop(1,"#fff9ec");ctx.fillStyle=tint;
+          for(let row=-count;row<count;row++)for(let col=-count;col<count;col++){
+            const x=(col+Math.abs(row%2)*.5)*cell,y=row*cell;
+            const rad=cell*s.dotSize/200*(.86+.27*hash(col,row));
+            ctx.moveTo(x+rad,y);ctx.arc(x,y,rad,0,Math.PI*2);
+          }
+          ctx.fill();
         }
       }
     }

@@ -22,11 +22,13 @@ def main():
         return "<script>\n" + code + "\n</script>"
 
     page = re.sub(r'<link rel="stylesheet" href="([\w-]+\.css)">', inline_style, page)
+    page = page.replace('id="moshCompareLink" href="compare/"', 'id="moshCompareLink" href="https://hurrygoooodjob.github.io/tonepress/compare/"')
     assets = APP / "assets"
     page = page.replace("assets/crt-poster.webp", "data:image/webp;base64," + encoded(assets / "crt-poster.webp"))
     photo = "data:image/jpeg;base64," + encoded(assets / "coast.jpg")
     clip = "data:video/mp4;base64," + encoded(assets / "coast-motion.mp4")
-    samples = f"<script>window.TONEPRESS_SAMPLE='{photo}';window.TONEPRESS_CLIP='{clip}';</script>"
+    study = "data:video/mp4;base64," + encoded(assets / "motion-study.mp4")
+    samples = f"<script>window.TONEPRESS_SAMPLE='{photo}';window.TONEPRESS_CLIP='{clip}';window.TONEPRESS_STUDY='{study}';</script>"
     page = page.replace('<script src="halftone.js">', samples + '\n<script src="halftone.js">')
     person = assets / "person"
     bundles = [f'<script type="application/octet-stream" id="person-file-{i}">{encoded(person / name)}</script>'

@@ -66,10 +66,19 @@
     let custom = checkedLooks();
     const templates = () => [...looks, ...custom];
     const initial = templates().find(look => look.id === query.get("look")) || looks[0];
+    let moshOnly=query.has("mosh");
+    const definitionOf=item=>{
+      const base=effects[item.type];
+      if(item.profile!=="mosh" || !window.TonepressMoshVariants) return base;
+      const ext=TonepressMoshVariants.controls?.[item.type];
+      const scaleLabel=TonepressMoshVariants.scaleLabels?.[item.type] || base.scaleLabel;
+      return ext || scaleLabel!==base.scaleLabel ? {...base,controls:[...(base.controls||[]),...(ext||[])],scaleLabel} : base;
+    };
+    const newLayer=type=>moshOnly || type.startsWith("mosh-") ? TonepressMosh.layer(type) : layer(type);
     const single = query.get("effect") || (query.has("mosh") ? "mosh-luma-mesh" : null);
     let committed = stateForLook(initial);
     if (single && Object.hasOwn(effects, single)) {
-      committed = {layers: [layer(single)], motion: "none", templateId: null, selected: 0};
+      committed = {layers: [newLayer(single)], motion: "none", templateId: null, selected: 0};
     }
 
     let draft = null;
@@ -95,7 +104,6 @@
     const category = byId("effectCategory");
     const onlyNew = byId("onlyNew");
     const collectionButton=byId("moshCollection");
-    let moshOnly=query.has("mosh");
     const specialist = TonepressControls.create(byId("extraControls"), writeLayerParameter, feedback);
     const visibleTrial = () => transient || draft;
     const editing = () => draft?.state || committed;
@@ -119,9 +127,9 @@
     function thumbnail(canvas) {
       const type = canvas.dataset.type;
       const look = canvas.dataset.look && templates().find(item => item.id === canvas.dataset.look);
-      const recipe = type ? [layer(type)] : look?.layers;
+      const recipe = type ? [newLayer(type)] : look?.layers;
       if (!recipe) return;
-      const key = type ? "effect:" + type : "template:" + look.id;
+      const key = type ? (moshOnly ? "mosh:" : "effect:") + type : "template:" + look.id;
       if (!thumbnails.has(key)) {
         thumbPainter.render(sample, {layers: recipe, width: sample.width, height: sample.height, motion: "none", time: .6});
         const snapshot = document.createElement("canvas");
@@ -163,7 +171,7 @@
     const railObserver = thumbObserver(rail);
     document.addEventListener("tonepress:person-ready",()=>{
       const canvas=catalog.querySelector('canvas[data-type="mosh-remove-background"]');
-      thumbnails.delete("effect:mosh-remove-background");
+      thumbnails.delete("effect:mosh-remove-background");thumbnails.delete("mosh:mosh-remove-background");
       if(canvas){delete canvas.dataset.sampleRevision;watchThumbnails(catalog,catalogObserver);}
     });
 
@@ -248,7 +256,7 @@
       byId("motion").value = state.motion;
       byId("emptyStack").hidden = Boolean(committed.layers.length);
       byId("activeControls").hidden = !current;
-      const definition = current && effects[current.type];
+      const definition = current && definitionOf(current);
       const info = byId("effectInfo");
       info.hidden = !current;
       info.textContent = definition ? t(definition.description) : "";
@@ -312,13 +320,13 @@
       const current = focusedLayer(state);
       const replacing = mode === "solo" && !!current;
       if (replacing) {
-        if (current.type !== option.key || tunedLayer) {
+        if (current.type !== option.key || current.profile !== newLayer(option.key).profile || tunedLayer) {
           // A replacement keeps the target layer's enabled state and all other layers intact.
-          state.layers[state.selected] = tunedLayer ? {...tunedLayer} : {...layer(option.key), enabled: current.enabled};
+          state.layers[state.selected] = tunedLayer ? {...tunedLayer} : {...newLayer(option.key), enabled: current.enabled};
           state.templateId = null;
         }
       } else {
-        state.layers.push(tunedLayer ? {...tunedLayer} : layer(option.key));
+        state.layers.push(tunedLayer ? {...tunedLayer} : newLayer(option.key));
         state.selected = state.layers.length - 1;
         state.templateId = null;
       }
@@ -677,7 +685,7 @@
     rebuildCategories();
     collectionButton.setAttribute("aria-pressed",String(moshOnly));
     collectionButton.onclick=()=>{
-      moshOnly=!moshOnly; rebuildCategories(); catalogCards.forEach(card=>localizeCard(card)); orderCatalog(); collectionButton.setAttribute("aria-pressed",String(moshOnly));
+      moshOnly=!moshOnly; for(const c of catalog.querySelectorAll("canvas")) delete c.dataset.sampleRevision; rebuildCategories(); catalogCards.forEach(card=>localizeCard(card)); orderCatalog(); collectionButton.setAttribute("aria-pressed",String(moshOnly));
       showGallery(true,true);
     };
     if (query.get("library") === "new") onlyNew.checked = true;
@@ -782,17 +790,17 @@
       const state = editing();
       const current = focusedLayer(state);
       if (!current || busy) return;
-      const definition = effects[current.type];
-      const explicitControls = current.chars !== undefined || current.palette !== undefined
-        || (definition.controls || []).some(control => Object.hasOwn(current, control.key));
-      if (current.size === definition.size && current.strength === definition.strength && !explicitControls) return;
+      const definition = definitionOf(current);
+      const defaults=current.profile==="mosh" ? TonepressMosh.layer(current.type) : layer(current.type);
+      const keys=new Set(["size","strength","chars","palette",...(definition.controls||[]).map(control=>control.key),...Object.keys(defaults)]);
+      keys.delete("enabled");keys.delete("type");keys.delete("profile");
+      if (![...keys].some(key=>current[key]!==defaults[key])) return;
       if (!draft) keepSnapshot();
       clearTransient();
-      current.size = definition.size;
-      current.strength = definition.strength;
-      delete current.chars;
-      delete current.palette;
-      for (const control of definition.controls || []) delete current[control.key];
+      for(const key of keys){
+        if (Object.hasOwn(defaults,key)) current[key]=defaults[key];
+        else delete current[key];
+      }
       state.templateId = null;
       specialist.reset();
       update("parameter");

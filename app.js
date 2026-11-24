@@ -92,14 +92,14 @@
     const types=recipe.layers.filter(layer=>layer.enabled && layer.strength>0).map(layer=>layer.type);
     const needsFrames=types.some(id=>['mosh-data-mosh','mosh-optical-flow','mosh-slit-scan'].includes(id));
     const needsAudio=types.includes('mosh-audio-visualizer');
-    const hint=needsAudio && (!video || state.sample || !state.file || state.file.size>96*1024*1024) ? '请导入带声音的视频查看频谱。'
+    const hint=needsAudio && (!video || (state.sample && state.sample!=='motion') || !state.file || state.file.size>96*1024*1024) ? '请导入带声音的视频查看频谱。'
       : needsFrames && !video ? '这个效果需要连续视频帧。'
       : needsFrames && state.source.paused ? '播放视频，查看连续帧产生的效果。' : '';
     const cue=el('motionCue'),label=hint ? t(hint) : '';
     if(cue.firstElementChild.textContent!==label)cue.firstElementChild.textContent=label;
     const example=el('motionExample');example.hidden=video || !needsFrames || needsAudio;
     if(!example.hidden){
-      const address=new URL(location.href);address.search='';address.hash='';address.searchParams.set('mosh','');address.searchParams.set('sample','video');
+      const address=new URL(location.href);address.search='';address.hash='';address.searchParams.set('mosh','');address.searchParams.set('sample','motion');
       address.searchParams.set('effect',types.find(id=>['mosh-data-mosh','mosh-optical-flow','mosh-slit-scan'].includes(id)));example.href=address.href;
     }
     cue.hidden=!hint;
@@ -404,7 +404,7 @@
   function updateMediaLabels() {
     if (!state.source) return;
     const video = state.kind === 'video';
-    state.name = state.sample ? t(video ? '韦尔纳扎港湾·平移.mp4' : '韦尔纳扎港湾.jpg') : state.file.name;
+    state.name = state.sample ? t(state.sample==='motion' ? '港湾运动对照.mp4' : video ? '韦尔纳扎港湾·平移.mp4' : '韦尔纳扎港湾.jpg') : state.file.name;
     ui.fileName.textContent = state.name;
     ui.kind.textContent = t(video ? (state.sample ? '示例视频' : '视频') : (state.sample ? '示例照片' : '照片'));
     ui.sampleLabel.textContent = t(video ? '示例照片' : '示例视频');
@@ -413,9 +413,10 @@
     if (demoVideo) {
       message('正在打开港湾视频…');
       try {
-        const r = await fetch(window.TONEPRESS_CLIP || 'assets/coast-motion.mp4');
+        const address=demoVideo==='motion' ? window.TONEPRESS_STUDY || 'assets/motion-study.mp4' : window.TONEPRESS_CLIP || 'assets/coast-motion.mp4';
+        const r = await fetch(address);
         if (!r.ok) throw new Error('示例视频无法读取，请重新打开单文件版或导入自己的视频。');
-        file = new File([await r.blob()], '韦尔纳扎港湾·平移.mp4', {type:'video/mp4'});
+        file = new File([await r.blob()], demoVideo==='motion' ? '港湾运动对照.mp4' : '韦尔纳扎港湾·平移.mp4', {type:'video/mp4'});
         if (token !== state.loading) return;
       } catch (error) {
         if (token === state.loading) message(error.message, true);
@@ -625,8 +626,10 @@
   const screens = TonepressScreens.connect({
     pickFile: () => ui.file.click(),
     enter(file) {
-      if (file || (!state.source && !state.importing)) loadMedia(file, !file && new URLSearchParams(location.search).get('sample')==='video');
-      else layout();
+      if (file || (!state.source && !state.importing)) {
+        const sample=file ? '' : new URLSearchParams(location.search).get('sample');
+        loadMedia(file,sample==='motion' ? 'motion' : sample==='video');
+      } else layout();
     },
     leave() {
       if (state.source) pauseMedia();

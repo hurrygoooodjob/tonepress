@@ -90,7 +90,7 @@
         result.globalAlpha=1;
         result.drawImage(input,0,0,width,height);
         result.globalCompositeOperation=def.overlay ? "source-over" : "source-atop";
-        result.globalAlpha=strength/100;
+        result.globalAlpha=def.handlesAmount ? 1 : strength/100;
         result.drawImage(art,0,0);
       } finally {result.restore();}
     }

@@ -78,7 +78,7 @@ Object.assign(window.TonepressCatalogStrings ||= {}, {
   '亮部输出':['Highlight output','明部出力','하이라이트 출력'],
   '白场输出':['White output','白出力','흰색 출력'],
   '色彩密度':['Color density','色の濃さ','색 밀도'],
-  '起始色相':['Start hue','開始色相','시작 색조'],
+  '色相偏移':['Hue offset','色相オフセット','색조 오프셋'],
   '每秒色相角':['Hue degrees per second','毎秒の色相角度','초당 색조 각도'],
   '双色映射曲线':['Duotone curve','デュオトーンカーブ','듀오톤 곡선'],
   '双色暗部颜色':['Shadow color','暗部の色','그림자 색'],
@@ -154,4 +154,13 @@ Object.assign(window.TonepressCatalogStrings ||= {}, {
   '荧光绿':['Phosphor green','蛍光グリーン','형광 녹색'],
   '橙色指示灯':['Warm indicator','オレンジの表示灯','주황 표시등'],
   '保留原色':['Keep source colors','元の色を保持','원본 색 유지']
+});
+
+Object.assign(window.TonepressCatalogStrings, {
+  "洋红青色": ["Magenta and cyan", "マゼンタとシアン", "마젠타와 시안"],
+  "让亮度在反相临界值附近折回，可调整曲线和染色。": [
+    "Fold the luminance around a reversal point and adjust the curve or tint.",
+    "反転点で明るさを折り返し、カーブと色合いを調整できます。",
+    "반전점을 중심으로 밝기를 접어 색과 곡선을 조절할 수 있습니다."
+  ]
 });

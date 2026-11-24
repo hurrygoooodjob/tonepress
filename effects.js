@@ -428,6 +428,7 @@
     }
 
     function apply(input, output, settings, layer, position) {
+      if(settings.moshProfile && window.TonepressMoshVariants?.draw(input,output,settings,layer)) return;
       if (TonepressKits.byType.has(settings.type)) {
         kits.draw(input,output,settings,layer,position);
       } else if (settings.type === "halftone") {
@@ -469,7 +470,7 @@
 
         for (let index = 0; index < active.length; index++) {
           const { type, size, strength, palette, chars } = active[index];
-          if ((extraKinds.has(type) || TonepressKits.byType.has(type)) && (typeof current.getContext !== "function" || current.width !== width ||
+          if ((active[index].profile==="mosh" || extraKinds.has(type) || TonepressKits.byType.has(type)) && (typeof current.getContext !== "function" || current.width !== width ||
               current.height !== height)) {
             const inputCanvas = nextCanvas(current);
             paint(current, inputCanvas, width, height);
@@ -487,7 +488,7 @@
           apply(current, output, { type,
             palette: Object.hasOwn(palettes,palette) ? palette : "handheld",
             chars: glyphRamp(chars), size: clamp(finite(size, 6), 2, 16),
-            strength: clamp(finite(strength, 22), 0, 100), width, height, sourceWidth, sourceHeight, time, audioBuffer, originalSource:source, maskUnderlay:index ? maskUnderlay : null, videoSource:typeof source.videoWidth==="number" }, active[index], index);
+            strength: clamp(finite(strength, 22), 0, 100), width, height, sourceWidth, sourceHeight, time, audioBuffer, originalSource:source, moshProfile:active[index].profile==="mosh", maskUnderlay:index ? maskUnderlay : null, videoSource:typeof source.videoWidth==="number" }, active[index], index);
           current = output;
           maskUnderlay = nextUnderlay;
         }

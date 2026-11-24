@@ -15,6 +15,7 @@ Object.assign(window.TonepressCatalogStrings, {
   "阶梯抽帧": ["Decimate", "間引きコマ送り", "프레임 건너뛰기"],
 
   "匹配相邻视频帧的运动，用位移推动前一张处理结果，让残留画面以块为单位向前拖行。静态照片保留原样。": ["Match motion across video frames and carry the previous processed image forward in blocks. A still photo passes through.", "動画の隣接フレームから動きを求め、直前の処理結果をブロック単位で引きずります。静止画はそのまま表示します。", "인접 영상 프레임의 움직임을 비교해 이전 처리 결과를 블록 단위로 끌고 갑니다. 정지 사진은 그대로 표시합니다."],
+  "跟踪视频各区域的移动方向，将稀疏位移平滑成流动的变形。照片也可生成随图像明暗变化的液态扭曲。": ["Track motion in video and use local brightness to warp stills.", "動画の動きを追い、静止画では明暗に応じて映像を変形します。", "영상의 움직임을 추적하고 사진은 밝기에 따라 유동적으로 왜곡합니다."],
   "跟踪视频各区域的移动方向，将稀疏位移平滑成流动的变形。静态照片保留原样。": ["Track local motion in video and smooth the displacements into a flowing distortion. A still photo passes through.", "動画各部の移動方向を追い、変位をなめらかにつないで流れるように変形します。静止画はそのまま表示します。", "영상 영역마다 이동 방향을 추적하고 변위를 부드럽게 연결해 흐르는 왜곡을 만듭니다. 정지 사진은 그대로 표시합니다."],
   "逐帧变换并重叠已经处理过的画面。缩放和旋转能拉出隧道或旋涡。": ["Transform and overlay the preceding processed frame. Zoom and rotation can produce tunnels or spirals.", "直前の処理結果を変形して重ねます。拡大縮小と回転でトンネルや渦を作れます。", "이전 처리 프레임을 변형해 겹칩니다. 확대·축소와 회전으로 터널이나 소용돌이를 만들 수 있습니다."],
   "顺着指定方向柔化并汇聚邻域颜色。视频中上一帧的色块会短暂渗入当前画面。": ["Soften and pool neighboring colors in a chosen direction. In video, colors from the previous frame briefly bleed through.", "指定方向に沿って周囲の色をなじませます。動画では前のフレームの色が次の画面に少しにじみます。", "선택한 방향으로 주변 색을 부드럽게 퍼뜨립니다. 영상에서는 이전 프레임의 색이 다음 화면에 잠시 번집니다."],
@@ -90,3 +91,5 @@ Object.assign(window.TonepressCatalogStrings, {
   "更新频率": ["Update frequency", "更新頻度", "갱신 빈도"],
   "停帧染色量": ["Held frame tint", "保持フレームの色付け", "고정 프레임 착색"]
 });
+
+Object.assign(window.TonepressCatalogStrings,{"回馈横移":["Feedback X offset","フィードバックの横移動","피드백 가로 오프셋"],"回馈纵移":["Feedback Y offset","フィードバックの縦移動","피드백 세로 오프셋"]});

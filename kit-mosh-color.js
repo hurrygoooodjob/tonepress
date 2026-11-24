@@ -30,60 +30,60 @@
   });
 
   const definitions = {
-    'mosh-posterize':definition('色阶分带','Posterize','色阶数',6,100,'将连续色调量化为有限色阶，让平滑渐变变成清晰色带。'),
-    'mosh-solarize':definition('日晒反相','Solarize','反相曲线',8,88,'保持暗部，将达到阈值的亮部反相，并可染色。',[
-      range('cutoff','亮部阈值',12,94,59),range('lift','曝光偏移',-30,30,0),
+    'mosh-posterize':definition('色阶分带','Posterize','色阶数',4,100,'将连续色调量化为有限色阶，让平滑渐变变成清晰色带。'),
+    'mosh-solarize':definition('日晒反相','Solarize','反相曲线',8,100,'让亮度在反相临界值附近折回，可调整曲线和染色。',[
+      range('cutoff','亮部阈值',12,94,50),range('lift','曝光偏移',-30,30,0),
       select('tint','反相染色','none',[['none','无染色'],['amber','琥珀'],['cyan','冰青']])]),
-    'mosh-bleach':definition('漂白过曝','Bleach','漂白深度',9,81,'抬升中间调并压缩高光，保留可调的原片颜色。',[
-      range('color','留色比例',0,100,30)]),
-    'mosh-sharpen':definition('锐化','Sharpen','锐化半径',4,72,'以高斯模糊估计低频，再加强细节和边缘反差。',[
-      range('gain','边缘增益',10,250,115)]),
-    'mosh-color-correction':definition('基础色彩校正','Color Correction','中间调',8,82,'分别调整曝光、对比度、饱和度和色相，或输出负片。',[
-      range('exposure','曝光偏移',-40,40,7),range('contrast','对比度',-75,75,10),range('saturation','饱和度',-100,100,14),
+    'mosh-bleach':definition('漂白过曝','Bleach','漂白深度',8,60,'抬升中间调并压缩高光，保留可调的原片颜色。',[
+      range('color','留色比例',0,100,75)]),
+    'mosh-sharpen':definition('锐化','Sharpen','锐化半径',7,100,'以高斯模糊估计低频，再加强细节和边缘反差。',[
+      range('gain','边缘增益',10,250,190)]),
+    'mosh-color-correction':definition('基础色彩校正','Color Correction','中间调',8,100,'分别调整曝光、对比度、饱和度和色相，或输出负片。',[
+      range('exposure','曝光偏移',-40,40,0),range('contrast','对比度',-75,75,0),range('saturation','饱和度',-100,100,0),
       range('hue','色相角度',-180,180,0),toggle('negative','负片')]),
-    'mosh-curves':definition('通道曲线','Curves','曲线中点',8,88,'沿平滑的五点曲线重映射所有色彩或单独的红绿蓝通道。',[
+    'mosh-curves':definition('通道曲线','Curves','曲线中点',8,100,'沿平滑的五点曲线重映射所有色彩或单独的红绿蓝通道。',[
       select('channel','曲线通道','rgb',[['rgb','综合色彩'],['r','红色'],['g','绿色'],['b','蓝色']]),
-      range('black','黑场输出',0,100,2),range('shadows','暗部输出',0,100,16),
-      range('highlights','亮部输出',0,100,84),range('white','白场输出',0,100,99)]),
-    'mosh-hue-cycle':definition('色相循环','Hue Cycle','色彩密度',10,88,'在色轮上整体旋转颜色，并能按时间循环。',[
-      range('phase','起始色相',-180,180,56),range('speed','每秒色相角',-180,180,70)],true),
-    'mosh-duotone':definition('双色调','DuoTone','双色映射曲线',8,96,'根据原片亮度，在暗色和亮色之间连续取色。',[
-      colorPicker('darks','双色暗部颜色','#17274a'),colorPicker('lights','双色高光颜色','#faca75')]),
-    'mosh-rainbow':definition('亮度彩虹','Rainbow','彩带跨度',8,83,'用亮度索引彩色色带，沿选定方向偏移并随时间循环。',[
+      range('black','黑场输出',0,100,0),range('shadows','暗部输出',0,100,25),
+      range('highlights','亮部输出',0,100,75),range('white','白场输出',0,100,100)]),
+    'mosh-hue-cycle':definition('色相循环','Hue Cycle','色彩密度',10,100,'在色轮上整体旋转颜色，并能按时间循环。',[
+      range('phase','色相偏移',-180,180,0),range('speed','每秒色相角',-180,180,90)],true),
+    'mosh-duotone':definition('双色调','DuoTone','双色映射曲线',8,100,'根据原片亮度，在暗色和亮色之间连续取色。',[
+      colorPicker('darks','双色暗部颜色','#01215a'),colorPicker('lights','双色高光颜色','#ff4a7d')]),
+    'mosh-rainbow':definition('亮度彩虹','Rainbow','彩带跨度',8,50,'用亮度索引彩色色带，沿选定方向偏移并随时间循环。',[
       select('ramp','彩带方案','spectrum',[['spectrum','光谱'],['heat','热感'],['electric','电光']]),
-      range('phase','彩带偏移',0,100,12),range('angle','彩带角度',0,360,27),range('speed','彩带速度',-100,100,17)],true),
-    'mosh-instacolor':definition('即拍风格','InstaColor','调色深度',9,86,'用原创预设组合色彩曲线、色温和褪色。',[
-      select('grade','调色方案','amber',[['amber','暖纸'],['cold','冷银'],['fade','旧相纸'],['night','深夜']])]),
+      range('phase','彩带偏移',0,100,25),range('angle','彩带角度',0,360,0),range('speed','彩带速度',-100,100,50)],true),
+    'mosh-instacolor':definition('即拍风格','InstaColor','调色深度',8,50,'用原创预设组合色彩曲线、色温和褪色。',[
+      select('grade','调色方案','etikate',[['etikate','Etikate'],['amber','暖纸'],['cold','冷银'],['fade','旧相纸'],['night','深夜']])]),
     'mosh-rgb-shift':definition('RGB通道偏移','RGB Shift','分离距离',7,82,'分别移动红绿蓝通道，复现彩色信号的空间错位。',[
       range('angle','偏移角度',0,360,12),select('mode','分色模式','split',[['split','两向分离'],['red','仅移动红色'],['radial','径向分色']])]),
     'mosh-vignette':definition('镜头暗角','Vignette','暗角起点',8,80,'将四角渐变到指定颜色，可调边缘过渡和轮廓形状。',[
-      range('feather','过渡宽度',8,100,66),range('roundness','轮廓圆度',0,100,75),colorPicker('tint','暗角颜色','#0c1222')]),
-    'mosh-tilt-shift':definition('移轴景深','Tilt Shift','清晰带宽',7,89,'保持倾斜的焦带清晰，逐渐模糊焦带外的区域。',[
-      range('position','焦带位置',0,100,47),range('angle','焦带角度',-90,90,0),range('radius','模糊半径',2,45,19)]),
+      range('feather','过渡宽度',8,100,66),range('roundness','轮廓圆度',0,100,50),colorPicker('tint','暗角颜色','#000000')]),
+    'mosh-tilt-shift':definition('移轴景深','Tilt Shift','清晰带宽',7,16,'保持倾斜的焦带清晰，逐渐模糊焦带外的区域。',[
+      range('position','焦带位置',0,100,50),range('angle','焦带角度',-90,90,0),range('radius','模糊半径',2,45,12)]),
     'mosh-barrel-blur':definition('桶形镜头模糊','Barrel Blur','径向弯曲',9,88,'从中心向边缘逐渐软化并分散色彩，同时弯曲镜头坐标。',[
       toggle('invert','中心模糊'),toggle('concave','凹形畸变'),range('fringe','径向色边',0,100,37)]),
-    'mosh-glow':definition('高光辉光','Glow','辉光范围',8,81,'只提取超过阈值的亮部，让光溢出明亮物体边缘。',[
-      range('cutoff','亮部阈值',18,95,64)]),
+    'mosh-glow':definition('高光辉光','Glow','辉光范围',10,88,'只提取超过阈值的亮部，让光溢出明亮物体边缘。',[
+      range('cutoff','亮部阈值',18,95,50)]),
     'mosh-blur':definition('高斯模糊','Blur','模糊半径',9,94,'以高斯核均匀软化画面。'),
     'mosh-light-streak':definition('高光拉丝','Light Streak','拉光长度',9,93,'沿指定角度拉长亮部，可分开光迹的颜色并使方向缓慢摆动。',[
       range('angle','拉光角度',0,360,0),range('fringe','光迹色差',0,100,38),
       range('cutoff','亮部阈值',18,95,58),range('drift','光迹摆幅',0,45,5)],true),
-    'mosh-strobe':definition('节拍闪切','Strobe','明暗停留',8,80,'按节拍间歇压暗画面，支持不规律脉冲。',[
-      range('rate','闪切频率',.25,3,1.5,.25),toggle('randomness','随机节拍')],true),
-    'mosh-super8':definition('超八毫米胶片','Super8','片门抖动',7,90,'模拟老电影的画面漂移、过片暗带、漏光和浮尘。',[
-      range('burn','胶片漏光',0,100,58),range('dust','胶片浮尘',0,100,41),toggle('gate','显示片门','on'),
-      range('roll','过片速度',0,100,20)],true),
-    'mosh-scanlines':definition('显像扫描线','ScanLines','扫描间距',5,75,'用可旋转的重复亮暗细线模拟显像管扫描。',[
-      range('duty','扫描线宽度',5,95,37),range('angle','扫描角度',0,180,0),
-      select('mode','扫描线叠法','multiply',[['multiply','压暗'],['screen','提亮'],['soft-light','柔和对比']])]),
-    'mosh-grain':definition('胶片与数码颗粒','Grain','颗粒尺度',5,68,'叠加随时间变化的数码噪点或成簇的胶片颗粒。',[
-      select('stock','颗粒类型','film',[['film','胶片簇'],['digital','数码噪点']]),toggle('rgb','彩色颗粒'),
+    'mosh-strobe':definition('节拍闪切','Strobe','明暗停留',8,65,'按节拍间歇压暗画面，支持不规律脉冲。',[
+      range('rate','闪切频率',.25,12,8,.25),toggle('randomness','随机节拍')],true),
+    'mosh-super8':definition('超八毫米胶片','Super8','片门抖动',7,100,'模拟老电影的画面漂移、过片暗带、漏光和浮尘。',[
+      range('burn','胶片漏光',0,100,50),range('dust','胶片浮尘',0,100,100),toggle('gate','显示片门','on'),
+      range('roll','过片速度',0,100,30)],true),
+    'mosh-scanlines':definition('显像扫描线','ScanLines','扫描间距',2,25,'用可旋转的重复亮暗细线模拟显像管扫描。',[
+      range('duty','扫描线宽度',5,95,20),range('angle','扫描角度',0,180,0),
+      select('mode','扫描线叠法','screen',[['multiply','压暗'],['screen','提亮'],['soft-light','柔和对比']])]),
+    'mosh-grain':definition('胶片与数码颗粒','Grain','颗粒尺度',5,25,'叠加随时间变化的数码噪点或成簇的胶片颗粒。',[
+      select('stock','颗粒类型','digital',[['film','胶片簇'],['digital','数码噪点']]),toggle('rgb','彩色颗粒','on'),
       select('mode','颗粒叠法','soft-light',[['soft-light','柔和对比'],['overlay','强对比'],['multiply','压暗']])],true),
-    'mosh-8-bit':definition('八位像素画','8-Bit','像素块大小',8,94,'先按像素块平均颜色，再匹配到限定的原创复古调色板。',[
-      select('palette','八位调色板','arcade',[['arcade','街机十六色'],['terminal','绿色掌机'],['home','家用机冷暖']])]),
-    'mosh-dot-matrix':definition('显示点阵','Dot Matrix','点阵密度',7,96,'用直径随亮度变化的显示点重新绘制素材。',[
-      range('diameter','满亮点直径',25,96,78),range('softness','点缘柔化',0,100,14),
-      select('ink','点阵发光色','green',[['green','荧光绿'],['warm','橙色指示灯'],['source','保留原色']])])
+    'mosh-8-bit':definition('八位像素画','8-Bit','像素块大小',5,100,'先按像素块平均颜色，再匹配到限定的原创复古调色板。',[
+      select('palette','八位调色板','cga',[['cga','洋红青色'],['arcade','街机十六色'],['terminal','绿色掌机'],['home','家用机冷暖']])]),
+    'mosh-dot-matrix':definition('显示点阵','Dot Matrix','点阵密度',6,100,'用直径随亮度变化的显示点重新绘制素材。',[
+      range('diameter','满亮点直径',25,96,86),range('softness','点缘柔化',0,100,20),
+      select('ink','点阵发光色','source',[['green','荧光绿'],['warm','橙色指示灯'],['source','保留原色']])])
   };
 
   const cache = new WeakMap();
@@ -142,15 +142,18 @@
     applyTable(input,output,table(value=>Math.round(value*levels)/levels));
   }
   function solarize(input,output,s) {
-    const start = s.cutoff*2.55;
-    const shoulder = 5 + s.size*3;
-    const lifted = s.lift*2.55;
+    const cutoff = clamp(s.cutoff / 100+.08,.06,.96);
+    const exposure = s.lift / 100;
+    const power = .58+s.size*.044;
     const tints = {none:[1,1,1],amber:[1.16,1.02,.69],cyan:[.74,1.06,1.20]};
     const tint = tints[s.tint] || tints.none;
     edit(input,output,data=>{
       for(let i=0;i<data.length;i+=4) {
-        const t = ease(start,start+shoulder,luma(data,i)+lifted);
-        for(let c=0;c<3;c++) data[i+c]=lerp(data[i+c],(255-clamp(data[i+c]+lifted,0,255))*tint[c],t);
+        const tone = clamp(luma(data,i)/255+exposure);
+        const low = tone < cutoff;
+        const distance = low ? (cutoff-tone)/cutoff : (tone-cutoff)/(1-cutoff);
+        const result=255*(.16+(low?.84:.72)*Math.pow(distance,power));
+        for(let c=0;c<3;c++) data[i+c]=result*tint[c];
       }
     });
   }
@@ -160,7 +163,7 @@
     edit(input,output,data=>{
       for(let i=0;i<data.length;i+=4) {
         const tone = luma(data,i)/255;
-        const raised = 255*clamp(tone+wash*Math.pow(tone,.38)*(1-tone)*1.7);
+        const raised = 255*clamp(tone+(tone-.43)*wash*Math.min(1,tone*2)*1.6);
         data[i]=raised+(data[i]-tone*255)*retain+3;
         data[i+1]=raised+(data[i+1]-tone*255)*retain;
         data[i+2]=raised+(data[i+2]-tone*255)*retain-4;
@@ -212,7 +215,29 @@
     });
   }
   function hueCycle(input,output,s) {
-    gradePixels(input,output,s.phase+s.time*s.speed,.6+.04*s.size,value=>value);
+    const animated = s.speed !== 0;
+    const base = animated ? (s.videoSource ? 228 : 184) : 0;
+    const shift = (s.phase+base+s.time*s.speed)/60;
+    const saturation = (.6+.04*s.size) * (animated && !s.videoSource ? .9 : 1);
+    const weight = value => {
+      const k=value%6;
+      return Math.max(0,Math.min(k,4-k,1));
+    };
+    edit(input,output,data=>{
+      for(let i=0;i<data.length;i+=4) {
+        const red=data[i], green=data[i+1], blue=data[i+2];
+        const light=Math.max(red,green,blue);
+        const chroma=light-Math.min(red,green,blue);
+        if(chroma===0) continue;
+        const original=light===red ? (green-blue)/chroma :
+          light===green ? 2+(blue-red)/chroma : 4+(red-green)/chroma;
+        const hue=6*fract((original+shift)/6);
+        const delta=Math.min(light,chroma*saturation);
+        data[i]=light-delta*weight(hue+5);
+        data[i+1]=light-delta*weight(hue+3);
+        data[i+2]=light-delta*weight(hue+1);
+      }
+    });
   }
   function duotone(input,output,s) {
     const a=color(s.darks,[23,39,74]), b=color(s.lights,[250,202,117]);
@@ -255,7 +280,21 @@
     fade:{angle:1,sat:.64,delta:[15,7,4],curve:[.14,.31,.54,.74,.91]},
     night:{angle:11,sat:.88,delta:[-10,0,16],curve:[.015,.13,.34,.62,.96]}
   };
+  // Five tone anchors per channel measured on the settled visitor preview.
+  // These full-strength curves are blended by the layer's Amount control.
+  const instantCurves=[[56,86,150,218,255],[2,88,158,212,255],[70,112,156,226,255]]
+    .map(points=>curveTable(points.map(value=>value/255)));
   function instaColor(input,output,s) {
+    if(s.grade==='etikate'){
+      const depth=s.size/8;
+      edit(input,output,data=>{
+        for(let i=0;i<data.length;i+=4)for(let c=0;c<3;c++){
+          const value=data[i+c];
+          data[i+c]=lerp(value,instantCurves[c][value],depth);
+        }
+      });
+      return;
+    }
     const style = grades[s.grade] || grades.amber;
     const amount = clamp(.28+s.size*.049);
     const tone = curveTable(style.curve);
@@ -432,6 +471,7 @@
     ctx.drawImage(input,0,0);
     ctx.globalCompositeOperation='screen';
     ctx.drawImage(bloomed,0,0,s.width,s.height);
+    ctx.globalAlpha=.42; ctx.drawImage(bloomed,0,0,s.width,s.height); ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
   }
   function lightStreak(input,output,s) {
@@ -483,58 +523,99 @@
     ctx.fillStyle=`rgba(0,0,0,${pulse*.92})`;
     ctx.fillRect(0,0,s.width,s.height);
   }
+  const filmTiles = new WeakSet();
   function super8(input,output,s) {
     const ctx=context(output),w=s.width,h=s.height;
-    const time=s.time, scale=logical(s), grainFrame=Math.floor(time*17);
-    const sway=scale*(.5+s.size*.43);
-    const dx=(Math.sin(time*10.2)*.63+(random(grainFrame+11)-.5)*.46)*sway;
-    const dy=(Math.cos(time*8.2)*.56+(random(grainFrame+83)-.5)*.66)*sway;
-    const border=s.gate==='on' ? Math.max(1,Math.min(w,h)*.046) : 0;
-    if (border) {
-      ctx.fillStyle='#181206';
-      ctx.fillRect(0,0,w,h);
-    }
+    const time=s.time, frame=Math.floor(time*18), scale=Math.min(w,h)/640;
+    const sway=scale*s.size*.17;
+    const dx=(Math.sin(time*10.2)*.56+(random(frame+11)-.5)*.40)*sway;
+    const dy=(Math.sin(time*8.2)*.55+(random(frame+83)-.5)*.44)*sway;
+    const diffusion=scale*.77, pad=Math.ceil(sway+diffusion*2);
     ctx.save();
-    if (border) {
-      ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(border,border*.70,w-2*border,h-1.4*border,border*.45);
-      else ctx.rect(border,border*.70,w-2*border,h-1.4*border);
-      ctx.clip();
-    }
-    const pad=Math.ceil(sway+2);
+    ctx.filter=`blur(${diffusion}px)`;
     ctx.drawImage(input,dx-pad,dy-pad,w+2*pad,h+2*pad);
-    ctx.fillStyle='#a35f2c30';
-    ctx.globalCompositeOperation='soft-light';
-    ctx.fillRect(0,0,w,h);
-    ctx.globalCompositeOperation='source-over';
-    if (s.burn>0) {
-      const x=w*(.10+.095*Math.sin(time*1.21));
-      const gradient=ctx.createRadialGradient(x,h*.40,0,x,h*.40,w*.63);
-      const flicker=s.burn/100*(.73+.22*Math.sin(time*3.8+.7));
-      gradient.addColorStop(0,`rgba(255,151,59,${flicker*.72})`);
-      gradient.addColorStop(.38,`rgba(228,55,29,${flicker*.34})`);
-      gradient.addColorStop(1,'rgba(218,59,22,0)');
+    ctx.filter='none';
+
+    if(s.burn>0) {
+      const x=w*(.03+.035*Math.sin(time*1.21));
+      const y=h*(.57+.12*Math.sin(time*.91));
+      const leak=ctx.createRadialGradient(x,y,0,x,y,Math.min(w,h)*.40);
+      const amount=(s.burn/100)**1.7*(.68+.28*Math.sin(time*3.8+.7));
+      leak.addColorStop(0,`rgba(255,130,64,${amount*.46})`);
+      leak.addColorStop(.46,`rgba(235,84,50,${amount*.16})`);
+      leak.addColorStop(1,'rgba(235,84,50,0)');
       ctx.globalCompositeOperation='screen';
-      ctx.fillStyle=gradient;
+      ctx.fillStyle=leak;
       ctx.fillRect(0,0,w,h);
       ctx.globalCompositeOperation='source-over';
     }
-    if (s.roll>0) {
-      const center=fract(time*(.14+s.roll*.011)+.42)*h;
-      const band=ctx.createLinearGradient(0,center-h*.064,0,center+h*.064);
-      band.addColorStop(0,'#20100800'); band.addColorStop(.48,'#22110873'); band.addColorStop(1,'#20100800');
+    if(s.roll>0) {
+      const roll=s.roll/100, center=fract(time*(.09+roll*.7)+.48)*h;
+      const fade=h*(.017+.015*roll);
+      const band=ctx.createLinearGradient(0,center-fade,0,center+fade);
+      band.addColorStop(0,'transparent');
+      band.addColorStop(.56,`rgba(20,13,15,${roll*.18})`);
+      band.addColorStop(1,'transparent');
       ctx.fillStyle=band;
-      ctx.fillRect(0,center-h*.064,w,h*.128);
+      ctx.fillRect(0,center-fade,w,2*fade);
     }
-    for(let i=0;i<s.dust*.37;i++) {
-      const k=i*643+Math.floor(time*(i%4+3))*97;
-      const x=w*random(k+116), y=h*random(k+181);
-      const r=Math.max(.45,(.6+random(k+43)*2.2)*scale);
-      ctx.fillStyle=i%5===0 ? '#371b10b0' : '#ffe7af99';
-      ctx.beginPath();
-      ctx.ellipse(x,y,r*(i%5===0?1.5:.7),r,i*.69,0,TAU);
-      ctx.fill();
+    if(s.dust>0) {
+      const tile=buffer(output,'super8-grain',192,128);
+      if(!filmTiles.has(tile)) {
+        const surface=context(tile), texture=surface.createImageData(tile.width,tile.height);
+        for(let i=0;i<texture.data.length;i+=4) {
+          const grain=128+(random(i+311)+random(i+497)-1)*76;
+          texture.data[i]=texture.data[i+1]=texture.data[i+2]=grain;
+          texture.data[i+3]=255;
+        }
+        surface.putImageData(texture,0,0);
+        filmTiles.add(tile);
+      }
+      const grain=ctx.createPattern(tile,'repeat');
+      const pixel=Math.max(.85,scale*2.06);
+      grain.setTransform(new DOMMatrix([pixel,0,0,pixel,random(frame+594)*tile.width,random(frame+893)*tile.height]));
+      ctx.globalCompositeOperation='soft-light';
+      ctx.globalAlpha=s.dust/100*.40;
+      ctx.fillStyle=grain;
+      ctx.fillRect(0,0,w,h);
+      ctx.globalAlpha=1;
+      ctx.globalCompositeOperation='source-over';
+      for(let i=0;i<s.dust*.12;i++) {
+        const k=i*643+Math.floor(time*(i%4+3))*97;
+        const x=w*random(k+116), y=h*random(k+181);
+        const radius=Math.max(.35,(.4+random(k+43)*1.9)*scale);
+        ctx.fillStyle=i%5===0 ? '#221a2590' : '#e8ded176';
+        ctx.beginPath();
+        ctx.ellipse(x,y,radius*(i%5===0?1.5:.65),radius,i*.69,0,TAU);
+        ctx.fill();
+      }
     }
+
+    // Cache the film's RGB transmission and the soft edge of its rounded aperture.
+    const gate=s.gate==='on';
+    const grade=buffer(output,gate?'super8-framed':'super8-open',192,128);
+    if(!filmTiles.has(grade)) {
+      const surface=context(grade), film=surface.createImageData(grade.width,grade.height);
+      for(let y=0,i=0;y<grade.height;y++) for(let x=0;x<grade.width;x++,i+=4) {
+        const u=(x+.5)/grade.width, v=(y+.5)/grade.height;
+        const distance=Math.min(1.18,((u-.5)*2)**2+((v-.46)*2)**2);
+        const corner=distance*distance;
+        let aperture=1;
+        if(gate) {
+          const gx=Math.abs(u-.5)-.404, gy=Math.abs(v-.5)-.404;
+          const edge=.066-Math.hypot(Math.max(gx,0),Math.max(gy,0))-Math.min(Math.max(gx,gy),0);
+          aperture=ease(.001,.024,edge);
+        }
+        film.data[i]=255*aperture*(.936-.280*distance-.117*corner);
+        film.data[i+1]=255*aperture*(.949-.237*distance-.115*corner);
+        film.data[i+2]=255*aperture*(.974-.102*distance-.103*corner);
+        film.data[i+3]=255;
+      }
+      surface.putImageData(film,0,0);
+      filmTiles.add(grade);
+    }
+    ctx.globalCompositeOperation='multiply';
+    ctx.drawImage(grade,0,0,w,h);
     ctx.restore();
   }
   function scanlines(input,output,s) {
@@ -594,6 +675,7 @@
   }
 
   const palettes = {
+    cga:[[18,5,33],[233,29,217],[110,47,200],[38,255,255]],
     arcade:[[12,10,24],[42,28,69],[81,53,114],[164,132,164],[242,222,194],[159,44,60],[244,77,64],[251,145,62],
       [249,216,87],[32,104,67],[69,159,88],[141,211,86],[33,70,125],[55,130,199],[108,205,211],[204,92,141]],
     terminal:[[10,31,23],[42,86,54],[109,143,78],[192,209,109]],
@@ -609,6 +691,13 @@
     const palette=palettes[s.palette] || palettes.arcade;
     for(let i=0;i<data.length;i+=4) {
       if(!data[i+3]) continue;
+      if (s.palette==='cga') {
+        const bias = random(i*.25+905)*.12-.06;
+        const value=luma(data,i)/255+bias;
+        const chosen=palette[value<.26 ? 0 : value<.52 ? 1 : value<.68 ? 2 : 3];
+        data[i]=chosen[0]; data[i+1]=chosen[1]; data[i+2]=chosen[2];
+        continue;
+      }
       let chosen=palette[0],best=Infinity;
       for(const candidate of palette) {
         const r=data[i]-candidate[0],g=data[i+1]-candidate[1],b=data[i+2]-candidate[2];
@@ -624,10 +713,8 @@
     result.imageSmoothingEnabled=true;
   }
   function dotMatrix(input,output,s) {
-    const count=Math.round(16+s.size*5);
-    const step=Math.min(s.width,s.height)/count;
-    const cols=Math.max(1,Math.min(180,Math.round(s.width/step)));
-    const rows=Math.max(1,Math.min(180,Math.round(s.height/step)));
+    const cols=Math.round(16+s.size*4);
+    const rows=Math.max(1,Math.round(cols*s.height/s.width));
     const grid=copy(output,'dot-grid',input,cols,rows);
     const data=pixels(grid).data;
     const [w,h]=workSize(input,1380);

@@ -1,4 +1,8 @@
 Object.assign(window.TonepressCatalogStrings, {
+  "重复素材":["Repeat media","素材を繰り返す","소재 반복"],
+  "重复平铺":["Tile","タイル","반복 배치"],
+  "单次放置":["Place once","1回のみ","한 번만 배치"],
+  "中间颜色":["Middle color","中間色","중간 색상"],
   "素材与生成器": [
     "Content & generators",
     "素材とジェネレーター",

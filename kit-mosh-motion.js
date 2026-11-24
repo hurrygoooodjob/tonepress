@@ -12,56 +12,57 @@
   const speed = (value=45) => range("speed","变化速度",0,100,value);
   const angle = (value=0) => range("angle","移动方向",-180,180,value);
   const definitions = {
-    "mosh-data-mosh": definition("数据蚀流","Data Mosh","预测分块",8,
+    "mosh-data-mosh": {...definition("数据蚀流","Data Mosh","预测分块",5,
       "匹配相邻视频帧的运动，用位移推动前一张处理结果，让残留画面以块为单位向前拖行。静态照片保留原样。",
-      [range("flow","运动拖拽",0,100,81)],true),
+      [range("flow","运动拖拽",0,100,60)],true),strength:50,handlesAmount:true},
     "mosh-optical-flow": definition("光流扭曲","Optical Flow","运动采样尺度",7,
-      "跟踪视频各区域的移动方向，将稀疏位移平滑成流动的变形。静态照片保留原样。",
-      [range("distortion","形变量",0,100,64),range("speed","响应速度",0,100,66)],true),
-    "mosh-feedback": definition("递归回馈","Feedback","回馈残留",9,
+      "跟踪视频各区域的移动方向，将稀疏位移平滑成流动的变形。照片也可生成随图像明暗变化的液态扭曲。",
+      [range("distortion","形变量",0,100,50),range("speed","响应速度",0,100,50)],true),
+    "mosh-feedback": {...definition("递归回馈","Feedback","回馈残留",8,
       "逐帧变换并重叠已经处理过的画面。缩放和旋转能拉出隧道或旋涡。",
-      [range("zoom","每帧缩放",80,125,104),range("rotate","每帧旋转",-15,15,3),
-        range("warp","回馈弯曲",0,100,19),range("hue","回馈色相",-180,180,12)],true),
+      [range("zoom","每帧缩放",80,125,100),range("rotate","每帧旋转",-15,15,0),
+        range("shiftX","回馈横移",-15,15,0),range("shiftY","回馈纵移",-15,15,0),
+        range("warp","回馈弯曲",0,100,50),range("hue","回馈色相",-180,180,0)],true),strength:50,handlesAmount:true},
     "mosh-watercolor": definition("水彩洇染","Watercolor","色彩晕染尺度",8,
       "顺着指定方向柔化并汇聚邻域颜色。视频中上一帧的色块会短暂渗入当前画面。",
-      [range("flow","洇染流动量",0,100,57),angle(48)],true),
+      [range("flow","洇染流动量",0,100,50),angle(0)],true),
     "mosh-slit-scan": definition("时间狭缝","Slit Scan","回溯时窗",8,
       "从不同时刻拣取相近位置的窄条，拼合成一张画面，让移动主体沿切片拉长。",
-      [range("slices","时间切片数",4,24,16),range("angle","切片角度",-180,180,90)],true),
+      [range("slices","时间切片数",2,24,8),range("angle","切片角度",-180,180,0)],true),
     "mosh-luma-mesh": definition("亮度浮雕网","Luma Mesh","地形深度",8,
       "把亮度变成真实投影的地形高度，可用彩色面片、扫描线或发光点描绘。",
       [select("mode","地形绘制方式","mesh",[["mesh","实体网面"],["lines","扫描线条"],["points","发光点云"]]),
-        range("resolution","网格分辨率",12,64,34),range("lumaHeight","亮度抬升",0,100,68),
+        range("resolution","网格分辨率",12,112,91),range("lumaHeight","亮度抬升",0,100,30),
         select("lumaInvert","亮度反转","normal",[["normal","亮处升高"],["invert","暗处升高"]]),
-        range("bands","高度台阶",0,12,0),range("terrainWarp","地形扭曲",0,100,12),
-        range("tilt","视角漂移幅度",0,100,28),range("tiltSpeed","视角漂移速度",0,100,27),
+        range("bands","高度台阶",0,12,0),range("terrainWarp","地形扭曲",0,100,0),
+        range("tilt","视角漂移幅度",0,100,0),range("tiltSpeed","视角漂移速度",0,100,0),
         select("blend","地形混合方式","normal",[["normal","正常混合"],["add","加亮混合"],["screen","滤色混合"]]),
-        range("meshOpacity","网面不透明度",0,100,90),range("gridOpacity","网线不透明度",0,100,46),
-        select("gridColor","网线颜色","mint",[["mint","荧光薄荷"],["white","柔白"],["source","随源图取色"]]),
+        range("meshOpacity","网面不透明度",0,100,100),range("gridOpacity","网线不透明度",0,100,60),
+        select("gridColor","网线颜色","white",[["mint","荧光薄荷"],["white","柔白"],["source","随源图取色"]]),
         range("lineCount","扫描线条数",8,96,45),range("lineOpacity","扫描线不透明度",0,100,96),
         range("lineThickness","扫描线粗细",1,100,36),range("lineBlur","扫描线柔化",0,100,22),
         range("pointOpacity","点云不透明度",0,100,94),range("pointSize","点云尺寸",1,100,34)]),
     "mosh-jitter": definition("信号抖振","Jitter","细抖幅度",7,
       "按指定方向快速位移画面，小幅度时像略不稳定的模拟信号。",
-      [speed(68),angle()]),
+      [speed(80),angle()]),
     "mosh-melt": definition("下坠熔流","Melt","熔流宽度",9,
       "将像素沿不规则的流道往下拖，让不同列像软化的颜料一样流走。",
-      [speed(37)]),
+      [speed(10)]),
     "mosh-shake": definition("撞击晃动","Shake","整帧晃动幅度",6,
       "模拟受到撞击的相机，让整个画面发生短促、离散的位移。",
-      [speed(46)]),
+      [speed(50)]),
     "mosh-bad-tv": definition("电视失谐","Bad TV","失谐尺度",9,
       "随时间扫过的模拟走带歪曲叠加细行抖动，让画面像电视跟踪失准。",
-      [range("thick","粗段失谐",0,100,67),range("fine","细线扰动",0,100,51),range("roll","滚动速度",0,100,38)]),
-    "mosh-soft-glitch": definition("渐变色撕裂","Soft Glitch","渐变色带宽度",8,
+      [range("thick","粗段失谐",0,100,50),range("fine","细线扰动",0,100,20),range("roll","滚动速度",0,100,50)]),
+    "mosh-soft-glitch": definition("渐变色撕裂","Soft Glitch","渐变色带宽度",5,
       "在柔和移动的色带里连续分离红绿蓝通道，形成渐变的色彩撕裂。",
-      [speed(42)]),
+      [speed(50)]),
     "mosh-hard-glitch": definition("硬块故障","Hard Glitch","故障方块尺度",8,
       "用不同时长的横带和硬边方块错位画面，并把颜色通道拉开。",
-      [range("split","通道分离量",0,100,69),speed(50)]),
+      [range("split","通道分离量",0,100,50),speed(50)]),
     "mosh-decimate": definition("阶梯抽帧","Decimate","停帧方块尺度",7,
       "只在指定节拍采新帧，中间重复前一帧，可有选择地保留旧方块并染色。",
-      [range("speed","更新频率",1,24,6),range("colorize","停帧染色量",0,100,24)],true)
+      [range("speed","更新频率",1,24,6),range("colorize","停帧染色量",0,100,50)],true)
   };
 
   const clamp = (value,min,max) => Math.min(max,Math.max(min,value));
@@ -191,41 +192,99 @@
   }
 
   function dataMosh(frame,s,hist,delta) {
-    const {w,h,data} = frame;
-    const previous = hist.result;
-    const field=motionField(hist.lum,hist.prevLum,w,h,Math.round(4+s.size*.96),Math.min(15,Math.round(8+delta*48)));
+    const {w,h,data}=frame;
+    const block=Math.max(5,Math.round(w/49*(.48+s.size*.12)));
+    const field=motionField(hist.lum,hist.prevLum,w,h,block,Math.min(22,Math.round(7+delta*72)));
+    const count=field.strength.length;
+    const flow=s.flow/100, amount=s.strength/100;
+    if(!hist.mosh) {
+      hist.mosh={seed:hist.result,energy:0,x:new Float32Array(count),y:new Float32Array(count)};
+    }
+    const track=hist.mosh;
+    let changed=0, samples=0;
+    for(let i=0;i<hist.lum.length;i+=113){
+      changed+=Math.abs(hist.lum[i]-hist.prevLum[i]);samples++;
+    }
+    track.energy+=changed/(255*samples);
+    const displacementX=new Float32Array(count),displacementY=new Float32Array(count);
+    for(let i=0;i<count;i++){
+      const reliability=clamp((field.strength[i]-.045)*2.2,0,1);
+      const gain=(.56+flow*.89)*(.69+probability(i,4)*.63);
+      track.x[i]+=field.xFlow[i]*reliability*gain;
+      track.y[i]+=field.yFlow[i]*reliability*gain;
+      // Prediction errors accumulate before a block breaks away from the held reference.
+      const threshold=(.63+amount*.57)*(.84+probability(i,19)*.42);
+      const slip=clamp((track.energy-threshold)*4.1,0,1);
+      const release=slip*slip*(3-2*slip);
+      displacementX[i]=track.x[i]*release;
+      displacementY[i]=track.y[i]*release;
+    }
+    const localAverage=(field)=>{
+      const smooth=new Float32Array(count);
+      for(let i=0;i<count;i++){
+        const col=i%fieldCols,row=Math.floor(i/fieldCols);
+        const a=row*fieldCols+Math.max(0,col-1),b=row*fieldCols+Math.min(fieldCols-1,col+1);
+        const c=Math.max(0,row-1)*fieldCols+col,d=Math.min(fieldRows-1,row+1)*fieldCols+col;
+        smooth[i]=field[i]*.58+(field[a]+field[b]+field[c]+field[d])*.105;
+      }
+      return smooth;
+    };
+    const fieldCols=field.cols,fieldRows=field.rows;
+    const disX=localAverage(displacementX),disY=localAverage(displacementY);
+    const tail=hist.frames;
+    const recent=tail.length ? tail[0].data : data;
+    tail.push({time:s.time,data});
+    while(tail.length>1 && tail[1].time<=s.time-.078)tail.shift();
+    const refresh=clamp((track.energy-.91)*2.25,0,1)*(1-.34*flow*amount);
     const result=new Uint8ClampedArray(data.length);
-    const drag=s.flow*.01;
-    const hold=.61+drag*.33;
-    for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
-      const i=(y*w+x)*4;
-      const cell=Math.floor(y/field.cell)*field.cols+Math.floor(x/field.cell);
-      const dx=field.xFlow[cell],dy=field.yFlow[cell];
-      const p=offsetAt(x+dx*drag*1.65,y+dy*drag*1.65,w,h);
-      const stale=hold+(field.strength[cell]>.18 && (dx || dy) ? .02 : -.06);
-      pixelBlend(result,i,data,i,previous,p,stale);
+    const retention=Math.min(1,amount/.3);
+    for(let y=0;y<h;y++){
+      const row=Math.floor(y/block)*field.cols;
+      for(let x=0;x<w;x++){
+        const i=(y*w+x)*4, cell=row+Math.floor(x/block);
+        const j=offsetAt(x+disX[cell],y+disY[cell],w,h);
+        const r=track.seed[j]-recent[i],g=track.seed[j+1]-recent[i+1],b=track.seed[j+2]-recent[i+2];
+        const chroma=Math.max(r,g,b)-Math.min(r,g,b);
+        const stableChroma=clamp(1.4-chroma/108,.04,1);
+        const fresh=refresh*stableChroma*(.45+.55*probability(cell,29));
+        for(let k=0;k<4;k++)result[i+k]=mix(data[i+k],mix(track.seed[j+k],recent[i+k],fresh),retention);
+      }
     }
     return result;
   }
 
-  function opticalFlow(frame,s,hist,delta) {
+  function opticalFlow(frame,s,hist={},delta=0) {
     const {w,h,data}=frame;
-    const field=motionField(hist.lum,hist.prevLum,w,h,Math.round(5+s.size*.77),Math.min(16,Math.round(7+delta*55)));
-    const amount=1-Math.exp(-(5+s.speed*.39)*delta);
-    const last=hist.field;
-    for (let i=0; i<field.xFlow.length; i++) {
-      field.xFlow[i]=mix(last?.xFlow[i] || 0,field.xFlow[i],amount);
-      field.yFlow[i]=mix(last?.yFlow[i] || 0,field.yFlow[i],amount);
+    let field;
+    if(hist.lum && hist.prevLum) {
+      field=motionField(hist.lum,hist.prevLum,w,h,Math.round(5+s.size*.77),Math.min(16,Math.round(7+delta*55)));
+      const amount=1-Math.exp(-(5+s.speed*.39)*delta);
+      const last=hist.field;
+      for (let i=0; i<field.xFlow.length; i++) {
+        field.xFlow[i]=mix(last?.xFlow[i] || 0,field.xFlow[i],amount);
+        field.yFlow[i]=mix(last?.yFlow[i] || 0,field.yFlow[i],amount);
+      }
+      hist.field=field;
     }
-    hist.field=field;
-    const distance=s.distortion*.064;
+    const lumas=hist.lum || lumaFrame(frame);
+    const amplitude=s.distortion*.01*Math.max(w,h)*.029;
+    const distance=s.distortion*.081;
+    const frequency=(15+s.size*.68)/Math.max(w,h);
+    const tick=s.time*(.45+s.speed*.044);
     const result=new Uint8ClampedArray(data.length);
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const i=(y*w+x)*4;
-      const [dx,dy]=vectorAt(field,x,y);
-      const sample=offsetAt(x+dx*distance,y+dy*distance,w,h);
-      const trail=.25*clamp(Math.hypot(dx,dy)/4,0,1);
-      pixelBlend(result,i,data,sample,hist.result,offsetAt(x+dx,y+dy,w,h),trail);
+      const [dx,dy]=field ? vectorAt(field,x,y) : [0,0];
+      const l=lumas[y*w+x]/255;
+      const lx=(lumas[y*w+limit(x+3,w-1)]-lumas[y*w+limit(x-3,w-1)])/255;
+      const ly=(lumas[limit(y+3,h-1)*w+x]-lumas[limit(y-3,h-1)*w+x])/255;
+      const xx=frequency*x, yy=frequency*y;
+      const swirl=Math.sin(xx*.71+yy*1.30+Math.sin(yy+.4)*1.36+l*4+tick);
+      const driftX=amplitude*(.59*swirl+.41*Math.sin(yy*.62-xx*1.43-tick*.79)+ly*1.25);
+      const driftY=amplitude*(.56*Math.cos(xx*1.27-yy*.95+swirl+tick*.56)-.43*lx);
+      const sample=offsetAt(x+dx*distance+driftX,y+dy*distance+driftY,w,h);
+      const trail=hist.result ? .15*clamp(Math.hypot(dx,dy)/4,0,1) : 0;
+      pixelBlend(result,i,data,sample,hist.result||data,offsetAt(x+dx,y+dy,w,h),trail);
     }
     return result;
   }
@@ -234,18 +293,20 @@
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data);
     const prior=hist.result;
-    const timeStep=clamp(delta*27,.40,3);
+    const timeStep=clamp(delta*24,.1,4);
     const turn=rad(s.rotate)*timeStep;
     const c=Math.cos(turn), d=Math.sin(turn);
     const inverse=1/Math.pow(s.zoom/100,timeStep);
     const hue=rad(s.hue)*timeStep;
     const cosHue=Math.cos(hue), sinHue=Math.sin(hue);
-    const persistence=.48+s.size*.028;
+    const baseHold=clamp((s.strength/100)*1.16+(s.size-8)*.012,0,.982);
+    const persistence=Math.pow(baseHold,timeStep);
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const i=(y*w+x)*4;
       const u=x-(w-1)*.5, v=y-(h-1)*.5;
-      const bend=Math.sin(v/Math.max(1,h)*11+s.time*.7)*w*s.warp*.00065;
-      const sx=(u*c-v*d)*inverse+w*.5+bend, sy=(u*d+v*c)*inverse+h*.5;
+      const bend=Math.sin(v/Math.max(1,h)*11+s.time*.7)*w*(s.warp-50)*.00042;
+      const sx=(u*c-v*d)*inverse+(w-1)*.5+bend-w*(s.shiftX||0)*.001*timeStep;
+      const sy=(u*d+v*c)*inverse+(h-1)*.5-h*(s.shiftY||0)*.001*timeStep;
       if(sx<0 || sy<0 || sx>=w || sy>=h) continue;
       const j=offsetAt(sx,sy,w,h);
       const lum=luma(prior,j), red=prior[j]-lum, blue=prior[j+2]-lum;
@@ -261,29 +322,31 @@
   function watercolor(frame,s,hist) {
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data.length);
-    const reach=(1.15+s.size*.44)*Math.max(w,h)/260;
+    const reach=(.52+s.size*.22)*Math.max(w,h)/260;
     const theta=rad(s.angle);
     const dx=Math.cos(theta)*reach, dy=Math.sin(theta)*reach;
-    const motion=.24+s.flow*.010;
+    const motion=.17+s.flow*.009;
     const taps=[[0,0],[-dx,-dy],[dx*motion,dy*motion],[-dy*.65,dx*.65],[dy*.65,-dx*.65],
       [dx*.7-dy*.45,dy*.7+dx*.45],[-dx*.9+dy*.5,-dy*.9-dx*.5]];
+    const density=hist ? .90-s.flow*.0022 : .48-s.flow*.0024;
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const i=(y*w+x)*4;
       const origin=luma(data,i);
-      let red=0,green=0,blue=0,cov=0;
+      const opacity=data[i+3]/255;
+      let red=data[i]*opacity*1.7,green=data[i+1]*opacity*1.7,blue=data[i+2]*opacity*1.7,cov=opacity*1.7;
       for (const [ox,oy] of taps) {
         const j=offsetAt(x+ox,y+oy,w,h);
         const similarity=Math.abs(luma(data,j)-origin)/255;
-        const k=(1-similarity*.72)*data[j+3]/255;
+        const k=(1-similarity)**3*data[j+3]/255;
         red+=data[j]*k;green+=data[j+1]*k;blue+=data[j+2]*k;cov+=k;
       }
-      const wash=(probability(x,y)-.5)*3;
-      const lag=hist?.result ? (.15+s.flow*.0015)*hist.result[i+3]/255 : 0;
+      const wash=(probability(x,y)-.5)*2.2;
+      const lag=hist?.result ? (.065+s.flow*.00125)*hist.result[i+3]/255 : 0;
       const p=offsetAt(x-dx*.45,y-dy*.45,w,h);
       const divide=1/(cov || 1);
-      result[i]=mix(red*divide+wash,hist?.result?.[p] || 0,lag);
-      result[i+1]=mix(green*divide+wash,hist?.result?.[p+1] || 0,lag);
-      result[i+2]=mix(blue*divide+wash,hist?.result?.[p+2] || 0,lag);
+      result[i]=mix((red*divide+wash)*density,hist?.result?.[p] || 0,lag);
+      result[i+1]=mix((green*divide+wash)*density,hist?.result?.[p+1] || 0,lag);
+      result[i+2]=mix((blue*divide+wash)*density,hist?.result?.[p+2] || 0,lag);
       result[i+3]=data[i+3];
     }
     return result;
@@ -292,15 +355,15 @@
   function slitScan(frame,s,hist) {
     const {w,h,data}=frame;
     const queue=hist.frames;
-    const span=.13+s.size*.048;
-    const count=Math.min(s.slices,queue.length+1);
+    const count=s.slices;
+    const span=Math.min(1.25,(count-1)/18.5*s.size/8);
     const frames=Array.from({length:count},(_,i)=>{
       if (!i) return data;
       const target=s.time-span*i/(count-1);
       return queue.reduce((best,item)=>Math.abs(item.time-target)<Math.abs(best.time-target)?item:best).data;
     });
     const result=new Uint8ClampedArray(data.length);
-    const theta=rad(s.angle), nx=-Math.sin(theta), ny=Math.cos(theta);
+    const theta=rad(s.angle), nx=Math.cos(theta), ny=Math.sin(theta);
     const spanX=Math.abs(nx),spanY=Math.abs(ny),distance=spanX+spanY;
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const label=.5+(nx*(x/Math.max(1,w-1)-.5)+ny*(y/Math.max(1,h-1)-.5))/distance;
@@ -311,23 +374,28 @@
     return result;
   }
 
-  function decimate(frame,s,hist) {
+  function decimate(frame,s,hist={}) {
     const {w,h,data}=frame;
     const bucket=Math.floor((s.time+1e-7)*s.speed);
     if (hist.bucket===bucket && hist.result) return hist.result;
     hist.bucket=bucket;
     const result=new Uint8ClampedArray(data.length);
-    const block=Math.round(4+s.size*1.1);
+    const block=Math.round(4+s.size*.84);
+    const colorize=s.colorize/100;
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const i=(y*w+x)*4;
       const gx=Math.floor(x/block),gy=Math.floor(y/block);
-      const keep=hist.result && probability(gx,gy,bucket)<.12;
+      const tile=probability(gx,gy,bucket);
+      const keep=hist.result && tile<.22;
       const source=keep ? hist.result : data;
-      const tint=keep ? 0 : s.colorize*.0028;
-      const lum=luma(source,i);
-      result[i]=mix(source[i],lum*.86,tint);
-      result[i+1]=mix(source[i+1],lum*.95+11,tint);
-      result[i+2]=mix(source[i+2],lum*1.13+16,tint);
+      const blockCenter=offsetAt((gx+.5)*block,(gy+.5)*block,w,h);
+      const tint=keep ? colorize*.21 : colorize*(tile>.77 ? .43 : .075);
+      const flat=tile>.74 ? .20+colorize*.29 : 0;
+      const brightness=tile>.84 ? 20*colorize : 4*colorize;
+      const lum=luma(source,blockCenter);
+      result[i]=mix(mix(source[i],source[blockCenter],flat),lum*1.14+brightness,tint);
+      result[i+1]=mix(mix(source[i+1],source[blockCenter+1],flat),lum*.96+brightness,tint);
+      result[i+2]=mix(mix(source[i+2],source[blockCenter+2],flat),lum*.89+brightness,tint);
       result[i+3]=source[i+3];
     }
     return result;
@@ -341,7 +409,8 @@
   function drawTemporal(input,ctx,s) {
     const stillWash=s.type==="mosh-watercolor" && !s.videoSource;
     if (!s.videoSource && !stillWash) return passthrough(ctx,input,s);
-    const frame=read(input,s,s.type==="mosh-slit-scan"?256:320);
+    const highDetail=["mosh-data-mosh","mosh-feedback","mosh-slit-scan"].includes(s.type);
+    const frame=read(input,s,highDetail?640:320);
     if(stillWash) return write(ctx,frame,watercolor(frame,s),s);
     const hist=s.history || {};
     const {w,h,data}=frame;
@@ -353,6 +422,7 @@
     const continuous=sameResolution && delta>0 && delta<.37;
     if (!continuous) {
       hist.field=null;
+      hist.mosh=null;
       hist.bucket=null;
       hist.frames=[];
       hist.prevLum=null;
@@ -369,7 +439,8 @@
       if(!hist.frames.length || s.time-hist.frames[hist.frames.length-1].time>=1/30-1e-6) {
         hist.frames.push({time:s.time,data});
       }
-      while(hist.frames.length>24 || s.time-hist.frames[0].time>.98) hist.frames.shift();
+      const windowSeconds=Math.min(1.25,(s.slices-1)/18.5*s.size/8);
+      while(hist.frames.length>1 && (hist.frames.length>42 || s.time-hist.frames[1].time>windowSeconds+.04)) hist.frames.shift();
     }
     hist.w=w;hist.h=h;hist.time=s.time;
     if(hist.first) return passthrough(ctx,input,s);
@@ -384,10 +455,10 @@
     const rows=lines ? s.lineCount : clamp(Math.round(cols*h/w*.93),10,96);
     const cycle=phase(s.time)*tau*Math.round(1+s.tiltSpeed*.078);
     const tilt=s.tilt*.0078;
-    const yaw=-.12+Math.sin(cycle)*tilt;
-    const pitch=.39+.24*tilt*Math.cos(cycle);
+    const yaw=-.015+Math.sin(cycle)*tilt;
+    const pitch=.10+.37*tilt*Math.cos(cycle);
     const cos=Math.cos(yaw),sin=Math.sin(yaw);
-    const elevation=(.035+s.size*.009)*s.lumaHeight*.015;
+    const elevation=(.016+s.size*.006)*s.lumaHeight*.011;
     const alignment=s.blend==="add"?"lighter":s.blend==="screen"?"screen":"source-over";
     const grid=s.gridColor==="white"?"#f0f0e5":"#96ffc0";
     const nodes=[];
@@ -399,17 +470,19 @@
       height=height*elevation+s.terrainWarp*.00058*Math.sin(12*u+6*v+cycle)*Math.cos(7*v);
       const px=(u-.5)*cos+(v-.5)*sin*.72;
       const depth=(v-.5)*cos-(u-.5)*sin*.72;
-      const perspective=1/(1+depth*.32);
+      const perspective=1/(1+depth*(.043+tilt*.22));
       nodes.push({
-        x:s.width*(.5+px*perspective*.89),
-        y:s.height*(.53+(depth*Math.cos(pitch)-height)*perspective*.91),
+        x:s.width*(.5+px*perspective*1.021),
+        y:s.height*(.516+(depth*Math.cos(pitch)-height)*perspective*1.025),
         r:data[i],g:data[i+1],b:data[i+2],a:data[i+3]/255,height
       });
     }
 
     passthrough(ctx,input,s);
-    ctx.fillStyle=s.blend==="normal"?"rgba(7,15,20,.81)":"rgba(7,15,20,.54)";
-    ctx.fillRect(0,0,s.width,s.height);
+    if(s.mode!=="mesh") {
+      ctx.fillStyle=s.blend==="normal"?"rgba(7,15,20,.63)":"rgba(7,15,20,.40)";
+      ctx.fillRect(0,0,s.width,s.height);
+    }
     ctx.globalCompositeOperation=alignment;
     ctx.lineJoin="round";
     const outputScale=Math.max(1,Math.min(s.width,s.height));
@@ -444,21 +517,21 @@
         ctx.fill();
       }
     } else {
-      ctx.lineWidth=Math.max(.4,outputScale*.00105);
+      ctx.lineWidth=Math.max(.35,outputScale*.00067);
       for (let y=rows-1; y>=0; y--) {
         for (let x=0;x<cols;x++) {
           const a=nodes[y*(cols+1)+x],b=nodes[y*(cols+1)+x+1];
           const c=nodes[(y+1)*(cols+1)+x], d=nodes[(y+1)*(cols+1)+x+1];
           for (const [p,q,r] of [[a,b,c],[b,d,c]]) {
             const average=(p.a+q.a+r.a)/3;
-            const shading=clamp(1.08+(p.height-q.height)*2-(r.height-p.height)*1.7,.55,1.45);
+            const shading=clamp(1.13+(p.height-q.height)*12-(r.height-p.height)*10,.68,1.58);
             trace([p,q,r],true);
             ctx.fillStyle=color({r:(p.r+q.r+r.r)/3, g:(p.g+q.g+r.g)/3, b:(p.b+q.b+r.b)/3},shading);
             ctx.globalAlpha=s.meshOpacity*.01*average;
             ctx.fill();
             if (s.gridOpacity>0) {
               ctx.strokeStyle=s.gridColor==="source"?color(p,1.35):grid;
-              ctx.globalAlpha=s.gridOpacity*.01*average;
+              ctx.globalAlpha=s.gridOpacity*.0072*average;
               ctx.stroke();
             }
           }
@@ -478,16 +551,30 @@
     const i=Math.floor(moment);
     const t=moment-i;
     const travel=mix(probability(i,9),probability((i+1)%rate,9),t*t*(3-2*t))*2-1;
-    const scale=Math.min(s.width,s.height)*(.003+s.size*.0016);
+    const frame=read(input,s,580), {w,h,data}=frame;
+    const scale=Math.min(w,h)*(.0015+s.size*.00082);
     const direction=rad(s.angle);
-    moveFrame(input,ctx,s,Math.cos(direction)*travel*scale,Math.sin(direction)*travel*scale);
+    const vx=Math.cos(direction),vy=Math.sin(direction);
+    const vxShift=vx*travel*scale,vyShift=vy*travel*scale;
+    const colorOffset=(.55+Math.abs(travel)*.8)*scale;
+    const result=new Uint8ClampedArray(data.length);
+    for(let y=0,i=0;y<h;y++) {
+      for(let x=0;x<w;x++,i+=4) {
+        const xx=x+vxShift,yy=y+vyShift;
+        const g=offsetAt(xx,yy,w,h);
+        const r=offsetAt(xx+vx*colorOffset,yy+vy*colorOffset,w,h);
+        const b=offsetAt(xx-vx*colorOffset*.77,yy-vy*colorOffset*.77,w,h);
+        result[i]=data[r];result[i+1]=data[g+1];result[i+2]=data[b+2];result[i+3]=data[g+3];
+      }
+    }
+    write(ctx,frame,result,s);
   }
 
   function shake(input,ctx,s) {
     const rate=3+Math.round(s.speed*.44), moment=phase(s.time)*rate;
     const sample=Math.floor(moment);
     const punch=Math.pow(1-(moment-sample),.82);
-    const impulse=(.42+.58*punch)*Math.min(s.width,s.height)*(.013+s.size*.0052);
+    const impulse=(.25+.75*punch)*Math.min(s.width,s.height)*(.008+s.size*.0029);
     const direction=probability(sample,13)*tau;
     moveFrame(input,ctx,s,Math.cos(direction)*impulse,Math.sin(direction)*impulse);
   }
@@ -495,8 +582,8 @@
   function melt(frame,s) {
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data.length);
-    const stripe=Math.max(2,Math.max(w,h)*(.011+s.size*.003));
-    const cycle=phase(s.time)*tau*Math.round(1+s.speed*.087);
+    const stripe=Math.max(2,Math.max(w,h)*(.007+s.size*.00195));
+    const cycle=s.time*tau*(.08+s.speed*.019);
     const runs=Array.from({length:w},(_,x)=>{
       const pos=x/stripe, base=Math.floor(pos), f=pos-base;
       const smooth=f*f*(3-2*f);
@@ -506,8 +593,10 @@
     for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
       const i=(y*w+x)*4;
       const run=runs[x];
-      const offsetY=run*h*(.12+s.size*.022)*(.36+.64*y/Math.max(1,h-1));
-      const offsetX=Math.sin(y/Math.max(1,h)*9+cycle+run*5)*run*w*.025;
+      const v=y/Math.max(1,h-1);
+      const wind=Math.sin(v*13+x/w*9+cycle);
+      const offsetY=(run-.27)*h*(.045+s.size*.0095)*(.56+.44*v) + wind*h*.013;
+      const offsetX=(Math.sin(v*15+cycle+run*6)*.43+wind*.57)*w*(.012+run*.036);
       const j=offsetAt(x+offsetX,y-offsetY,w,h);
       for(let k=0;k<4;k++) result[i+k]=data[j+k];
     }
@@ -517,20 +606,23 @@
   function badTV(frame,s) {
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data.length);
-    const rollPhase=(phase(s.time)*Math.round(s.roll*.12)+.28)%1;
-    const cycle=phase(s.time)*tau*8;
+    const rollPhase=s.roll ? ((.177+s.time*s.roll*.00823)%1+1)%1 : 0;
+    const cycle=s.time*tau*1.85;
     for (let y=0;y<h;y++) {
       const v=y/Math.max(1,h-1);
+      const sy=((v-rollPhase)%1+1)%1;
       const lineGap=Math.abs(v-rollPhase), d=Math.min(lineGap,1-lineGap);
-      const shape=Math.exp(-d*d*(42-s.size*1.5));
-      const bend=Math.sin(8*v+cycle*.25)*w*s.thick*.00065;
-      const snow=(probability(y,epoch(s.time,60))-.5)*s.fine*.0029*w;
-      const move=bend+shape*w*s.thick*.0025*Math.sin(d*11+1)+snow*.22;
-      const echo=w*(.0005+s.fine*.00012)*(shape+.25);
-      const stain=1-.13*shape-.066*(1+Math.cos(v*h*Math.PI)+Math.sin(v*122+cycle));
+      const shape=Math.exp(-d*d*(80-s.size*2));
+      const bend=(Math.sin(11*v+cycle*.43)*.74+Math.sin(v*4+cycle)*.26)*w*s.thick*.00118;
+      const snow=(probability(y,epoch(s.time,60))-.5)*s.fine*.0009*w;
+      const move=bend+shape*w*s.thick*.00085*Math.sin(d*11+1)+snow;
+      const echo=w*s.fine*.00008*(shape+.4);
+      const stain=1-.055*shape-.025*(1+Math.cos(v*h*Math.PI));
       for (let x=0;x<w;x++) {
         const i=(y*w+x)*4;
-        const g=offsetAt(x+move,y,w,h), r=offsetAt(x+move+echo,y,w,h), b=offsetAt(x+move-echo,y,w,h);
+        const xx=((x+move)%w+w)%w;
+        const yy=sy*(h-1);
+        const g=offsetAt(xx,yy,w,h), r=offsetAt(xx+echo,yy,w,h), b=offsetAt(xx-echo,yy,w,h);
         result[i]=(data[r]+2)*stain;
         result[i+1]=data[g+1]*stain;
         result[i+2]=(data[b+2]+2)*stain;
@@ -544,12 +636,13 @@
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data.length);
     const cycle=phase(s.time)*tau*Math.round(1+s.speed*.065);
-    const waves=10-s.size*.45;
+    const waves=11-s.size*.59;
     for (let y=0;y<h;y++) {
       const v=y/Math.max(1,h-1);
-      const power=Math.pow(.5+.5*Math.sin(v*waves+cycle),3.4);
-      const shift=(Math.sin(v*31-cycle)*.66+.34)*power*w*.09;
-      const separation=(power-.07)*w*(.020+s.size*.0031);
+      const focus=Math.exp(-((v-.52)*(v-.52))*6.2);
+      const power=Math.pow(.5+.5*Math.sin(v*waves+cycle),2.8)*focus;
+      const shift=(Math.sin(v*29-cycle)*.66+.34)*power*w*.056;
+      const separation=(power-.04)*w*(.009+s.size*.0025);
       for (let x=0;x<w;x++) {
         const i=(y*w+x)*4;
         const crossFade=Math.sin(x/Math.max(1,w-1)*Math.PI)*.55+.45;
@@ -569,19 +662,19 @@
     const {w,h,data}=frame;
     const result=new Uint8ClampedArray(data.length);
     const moment=epoch(s.time,s.speed);
-    const size=Math.max(3,Math.round(Math.max(w,h)*(.015+s.size*.005)));
+    const size=Math.max(3,Math.round(Math.max(w,h)*(.018+s.size*.0042)));
     for (let y=0;y<h;y++) {
       const band=Math.floor(y/(size*.62));
       const lineCheck=probability(band,moment,62);
-      const drift=lineCheck<.31?(probability(band,moment,12)-.5)*w*.40:0;
+      const drift=lineCheck<.40?(probability(band,moment,12)-.5)*w*.36:0;
       for (let x=0;x<w;x++) {
         const i=(y*w+x)*4;
         const gx=Math.floor(x/size), gy=Math.floor(y/size);
         const shape=probability(gx,gy,moment);
-        const dx=shape>.67?(probability(gx,gy,moment+51)-.5)*w*.27:0;
-        const dy=shape>.82?(probability(gx,gy,moment+13)-.5)*h*.23:0;
+        const dx=shape>.73?(probability(gx,gy,moment+51)-.5)*w*.24:0;
+        const dy=shape>.93?(probability(gx,gy,moment+13)-.5)*h*.15:0;
         const rx=drift+dx, ry=y+dy;
-        const split=(shape>.67 || drift ? 1 : .19)*w*s.split*.00105;
+        const split=(shape>.73 || drift ? 1 : .32)*w*s.split*.00125;
         const g=offsetAt(x+rx,ry,w,h),r=offsetAt(x+rx+split,ry,w,h),b=offsetAt(x+rx-split,ry,w,h);
         result[i]=data[r];result[i+1]=data[g+1];result[i+2]=data[b+2];result[i+3]=data[g+3];
       }
@@ -596,7 +689,10 @@
   function draw(input,output,s) {
     if(!Object.hasOwn(definitions,s.type)) return false;
     const ctx=output.getContext("2d");
-    if (Object.hasOwn(temporal,s.type)) drawTemporal(input,ctx,s);
+    if (!s.videoSource && (s.type==="mosh-optical-flow" || s.type==="mosh-decimate")) {
+      const frame=read(input,s,512);
+      write(ctx,frame,temporal[s.type](frame,s),s);
+    } else if (Object.hasOwn(temporal,s.type)) drawTemporal(input,ctx,s);
     else if (s.type==="mosh-luma-mesh") lumaMesh(input,ctx,s);
     else if (s.type==="mosh-jitter") jitter(input,ctx,s);
     else if (s.type==="mosh-shake") shake(input,ctx,s);

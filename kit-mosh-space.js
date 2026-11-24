@@ -16,16 +16,11 @@
   const direction = (value = 0) => range("direction", "几何方向角", -180, 180, value);
   const edgeChoices = [["matte", "暗色填边"], ["repeat", "重复填边"], ["clamp", "延伸边缘"]];
   const planeControls = [
-    range("shiftX", "画面横移", -65, 65, 8),
-    range("shiftY", "画面竖移", -65, 65, -4),
+    range("shiftX", "画面横移", -65, 65, 0),
+    range("shiftY", "画面竖移", -65, 65, 0),
     range("scaleX", "横轴缩放", 35, 220, 100),
     range("scaleY", "纵轴缩放", 35, 220, 100)
   ];
-  const paintMask = [
-    "00000000", "00110000", "01111000", "00111100",
-    "00011110", "00001100", "00000000", "00000000"
-  ].join("");
-
   function effect(name, english, description, scaleLabel, size, controls, options = {}) {
     return {name, english, description, scaleLabel, size, controls, strength: 100,
       group: "空间与位移", groupEnglish: "Space & displacement", ...options};
@@ -33,50 +28,50 @@
 
   const definitions = {
     "mosh-transform": effect("平面变换", "Transform", "平移、旋转与分别缩放画面，可选择越界填边方式。",
-      "整体缩放", 8, [...planeControls, direction(-12), select("edge", "画面填边", "matte", edgeChoices)]),
+      "整体缩放", 8, [...planeControls, direction(0), select("edge", "画面填边", "repeat", edgeChoices)]),
     "mosh-transform-3d": effect("透视变换", "Transform 3D", "绕三条轴旋转图像平面，并将倾斜后的图像重新做透视投影。",
       "透视距离", 8, [...planeControls,
-        range("rotateX", "俯仰旋转", -75, 75, -20), range("rotateY", "左右偏转", -75, 75, 30),
-        range("rotateZ", "平面自转", -180, 180, -8), select("edge", "画面填边", "matte", edgeChoices)]),
+        range("rotateX", "俯仰旋转", -75, 75, 0), range("rotateY", "左右偏转", -75, 75, 0),
+        range("rotateZ", "平面自转", -180, 180, 0), select("edge", "画面填边", "matte", edgeChoices)]),
     "mosh-bulge": effect("径向鼓包", "Bulge", "以可移动的圆心向外鼓包，圆外的图像保持原位。",
       "鼓包范围", 12, [range("pressure", "鼓包深度", -70, 120, 80),
         range("centerX", "鼓包横向中心", 0, 100, 50), range("centerY", "鼓包纵向中心", 0, 100, 50)]),
     "mosh-slices": effect("错位切片", "Slices", "切成窄条后让各条独立横移，可旋转条带并调节纵横运动速度。",
-      "错位条带数量", 10, [direction(0), range("travel", "条带纵向速度", 0, 100, 20),
-        range("drift", "条带横向速度", 0, 100, 45), range("offset", "切片偏移量", 0, 100, 46)], {timed: true}),
+      "错位条带数量", 10, [direction(0), range("travel", "条带纵向速度", 0, 100, 50),
+        range("drift", "条带横向速度", 0, 100, 50), range("offset", "切片偏移量", 0, 100, 50)], {timed: true}),
     "mosh-stretch": effect("局部拉伸", "Stretch", "沿指定方向拉长一条局部区域，可用波纹和锯齿扰动边缘。",
-      "拉伸带宽", 8, [range("position", "拉伸带位置", 0, 100, 50), direction(-14),
-        range("pull", "局部拉伸幅度", 0, 100, 68), range("wave", "拉伸边缘波纹", 0, 100, 24),
-        range("jaggies", "拉伸边缘锯齿", 0, 100, 15)], {timed: true}),
+      "拉伸带宽", 8, [range("position", "拉伸带位置", 0, 100, 50), direction(0),
+        range("pull", "局部拉伸幅度", 0, 100, 50), range("wave", "拉伸边缘波纹", 0, 100, 0),
+        range("jaggies", "拉伸边缘锯齿", 0, 100, 0)], {timed: true}),
     "mosh-wave": effect("正弦波变形", "Wave", "用单一正弦波弯曲图像，可改变波长、位置和方向。",
-      "正弦波长", 8, [range("position", "波形位置", 0, 100, 49), direction(15), range("amplitude", "正弦波幅", 0, 100, 49)]),
+      "正弦波长", 8, [range("position", "波形位置", 0, 100, 50), direction(0), range("amplitude", "正弦波幅", 0, 100, 10)]),
     "mosh-wobble": effect("水波摇晃", "Wobble", "用交叠的缓慢波形推移全幅图像，形成滚动的折射。",
-      "水波长度", 7, [range("speed", "水波速度", 0, 100, 42), range("amplitude", "水波振幅", 0, 100, 56)], {timed: true}),
+      "水波长度", 7, [range("speed", "水波速度", 0, 100, 50), range("amplitude", "水波振幅", 0, 100, 14)], {timed: true}),
     "mosh-smear": effect("拖抹笔痕", "Smear", "把画面沿一个方向拖成笔迹，视频运动会留下短暂累积的拖尾。",
       "拖痕长度", 9, [direction(12), range("speed", "拖痕积累速度", 0, 100, 54)], {timed: true, temporal: true}),
     "mosh-push-draw": effect("绘制位移", "Push Draw", "在 8×8 网格点亮要移动的区域，周围以柔和权重过渡，可选颜色分离与动画。",
       "绘制位移幅度", 9, [
-        {key: "paint", label: "绘制 8×8 位移图", kind: "bitmap", value: paintMask, importLabel: "导入位移图"},
-        direction(-18), range("fringe", "位移色散", 0, 100, 12), range("speed", "位移图动画速度", 0, 100, 0)
+        {key: "paint", label: "绘制 8×8 位移图", kind: "bitmap", value: "0".repeat(64), importLabel: "导入位移图"},
+        direction(0), range("fringe", "位移色散", 0, 100, 0), range("speed", "位移图动画速度", 0, 100, 0)
       ], {timed: true}),
     "mosh-mirror": effect("单侧镜像", "Mirror", "选定画面的一侧，再沿可移动的轴复制成另一半对称图像。",
       "镜面缩放", 8, [select("side", "保留镜像一侧", "left",
         [["left", "左侧"], ["right", "右侧"], ["top", "上侧"], ["bottom", "下侧"]]),
         range("position", "镜像轴位置", 15, 85, 50)]),
-    "mosh-tile": effect("旋转拼贴", "Tile", "把原片按网格重复，可旋转网格，并让隔行偏移随时间变化。",
-      "拼贴网格密度", 7, [range("offset", "拼贴隔行偏移", -100, 100, 35), direction(11),
-        range("speed", "拼贴偏移动画速度", 0, 100, 23)], {timed: true}),
+    "mosh-tile": effect("旋转拼贴", "Tile", "把素材的一部分镜像重复成网格，可旋转，也可让隔行偏移随时间变化。",
+      "拼贴网格密度", 4, [range("offset", "拼贴隔行偏移", -100, 100, 0), direction(0),
+        range("speed", "拼贴偏移动画速度", 0, 100, 50)], {timed: true}),
     "mosh-kaleido": effect("万花筒", "Kaleido", "把取样扇区反复镜像，围绕中心拼成可旋转的径向图案。",
-      "万花筒扇数", 7, [direction(14), range("zoom", "扇区取样缩放", 40, 180, 100)]),
+      "万花筒扇数", 6, [direction(0), range("zoom", "扇区取样缩放", 40, 180, 100)]),
     "mosh-splitter": effect("有序分条", "Splitter", "把画面切为等宽条带，按条带次序偏移并分别缩放。",
-      "分条数量", 7, [range("shift", "逐条位移", -100, 100, 40), range("offset", "分条交错距离", -100, 100, 18),
-        range("scale", "单条内缩放", 35, 170, 105), direction(19)]),
-    "mosh-polar": effect("极坐标环绕", "Polar", "将图像的横纵坐标映射为圆周角和半径，可改变内孔及重复次数。",
-      "极坐标外径", 13, [range("hole", "环形内孔", 0, 75, 15),
-        range("segments", "圆周重复次数", 1, 16, 1), direction(-12)]),
+      "分条数量", 15, [range("shift", "逐条位移", -100, 100, 0), range("offset", "分条交错距离", -100, 100, 0),
+        range("scale", "单条内缩放", 35, 170, 100), direction(0)]),
+    "mosh-polar": effect("极坐标环绕", "Polar", "沿放射线和同心环采样，把整帧切成扇形色块。",
+      "同心环间距", 8, [range("hole", "径向块宽", 0, 75, 5),
+        range("segments", "扇形块宽", 1, 16, 5), direction(0)]),
     "mosh-linocut": effect("油毡雕版", "LinoCut", "用长短不一的定向刻线重塑中间调，让亮部留白、暗部保留油墨。",
-      "雕刻刀痕尺度", 7, [direction(28), range("contrast", "雕版墨量", 0, 100, 48),
-        select("paper", "雕版纸墨配色", "ivory", [["ivory", "象牙纸黑墨"], ["clay", "陶土纸棕墨"], ["blue", "冷纸蓝墨"]])])
+      "雕刻刀痕尺度", 7, [direction(0), range("contrast", "雕版墨量", 0, 100, 55),
+        select("paper", "雕版纸墨配色", "mono", [["mono", "黑白"], ["ivory", "象牙纸黑墨"], ["clay", "陶土纸棕墨"], ["blue", "冷纸蓝墨"]])])
   };
 
   const buffers = new WeakMap();
@@ -202,7 +197,7 @@
 
   function slices(settings) {
     const radians = angle(settings.direction), c = Math.cos(radians), s = Math.sin(radians);
-    const count = settings.size;
+    const count = settings.size * 4;
     const vertical = settings.time * settings.travel / 230;
     const horizontal = settings.time * settings.drift / 27;
     const amplitude = settings.offset * .0034;
@@ -220,17 +215,17 @@
     };
   }
 
-  function stretch(settings) {
+  function stretch(settings, shape) {
     const radians = angle(settings.direction), c = Math.cos(radians), s = Math.sin(radians);
-    const line = settings.position / 100 - .5;
-    const half = .025 + settings.size * .022;
-    const pull = settings.pull / 100 * .86;
+    const extent = Math.abs(c) * shape.width + Math.abs(s) * shape.height;
+    const line = (settings.position / 100 - .5) * extent;
+    const half = (.035 + settings.size * .058) * (settings.pull / 100) * extent;
     return (x, y, point) => {
       const u = x * c + y * s, v = -x * s + y * c;
-      const ripple = Math.sin(u * 17 - settings.time) * settings.wave * .0012;
-      const jag = Math.sin(Math.floor((u + 1.7) * 39) * 8.264) * settings.jaggies * .00085;
-      const weight = smooth(1 - Math.abs(v - line + ripple + jag) / half);
-      const source = u - pull * weight * smooth((u + .2) * 2.3);
+      const ripple = Math.sin(v * 17 - settings.time) * settings.wave * .0012;
+      const jag = Math.sin(Math.floor((v + 1.7) * 39) * 8.264) * settings.jaggies * .00085;
+      const reference = line + ripple + jag;
+      const source = Math.abs(u - reference) < half ? reference - half : u;
       rotatePoint(source, v, point, c, s);
     };
   }
@@ -303,26 +298,29 @@
     const radians = angle(settings.direction), c = Math.cos(radians), s = Math.sin(radians);
     const count = Math.max(1, Math.round(settings.size / 2));
     const shift = settings.offset / 100;
-    const drift = settings.speed * .011 * settings.time;
+    const drift = settings.speed * .006 * settings.time;
+    const crop = 1 / (2 * count);
     return (x, y, point) => {
-      const u = (x * c + y * s) / shape.width * count + .5;
-      const v = (-x * s + y * c) / shape.height * count + .5;
-      const stagger = (Math.floor(v) % 2 ? shift : 0) + drift;
-      point.x = (fract(u + stagger) - .5) * shape.width;
-      point.y = (fract(v) - .5) * shape.height;
+      const u = ((x * c + y * s) / shape.width + .5) * count - .136;
+      const v = ((-x * s + y * c) / shape.height + .5) * count;
+      const stagger = (Math.floor((v + drift) * 2) % 2 ? shift : 0) + drift;
+      point.x = (-.5 + Math.abs(fract(u + stagger) * 2 - 1) * crop) * shape.width;
+      point.y = (.5 - Math.abs(fract(v + drift * .6) * 2 - 1) * crop) * shape.height;
     };
   }
 
-  function kaleido(settings) {
+  function kaleido(settings, shape) {
     const phase = angle(settings.direction);
     const wedge = TAU / settings.size;
     const zoom = 100 / settings.zoom;
+    const sampleAngle = angle(-27);
     return (x, y, point) => {
-      const radius = Math.hypot(x, y) * zoom;
-      const offset = (Math.atan2(y, x) - phase) / wedge;
-      const spoke = Math.abs(fract(offset) - .5) * wedge + phase;
-      point.x = Math.cos(spoke) * radius;
-      point.y = Math.sin(spoke) * radius;
+      const u = x / shape.width, v = y / shape.height;
+      const radius = Math.hypot(u, v) * zoom;
+      const offset = (Math.atan2(v, u) - phase) / wedge;
+      const spoke = Math.abs(fract(offset + .5) - .5) * wedge + sampleAngle;
+      point.x = Math.cos(spoke) * radius * shape.width;
+      point.y = (Math.sin(spoke) * radius * 1.03 - .022) * shape.height;
     };
   }
 
@@ -339,16 +337,16 @@
     };
   }
 
-  function polar(settings, shape) {
-    const radius = .16 + settings.size * .025;
-    const hole = settings.hole / 100 * radius;
-    const segments = settings.segments;
-    const phase = settings.direction / 360;
+  function polar(settings) {
+    const step = (.003 + settings.size * .0045) * (.65 + settings.hole / 100 * 7);
+    const spokes = Math.max(8, Math.round(240 / (1 + settings.segments * .56)));
+    const radians = angle(settings.direction);
     return (x, y, point) => {
       const distance = Math.hypot(x, y);
-      if (distance < hole || distance > radius) {point.x = point.y = NaN; return;}
-      point.x = (fract((Math.atan2(y, x) / TAU + phase) * segments) - .5) * shape.width;
-      point.y = (.5 - (distance - hole) / (radius - hole)) * shape.height;
+      const ring = (Math.floor(distance / step) + .5) * step;
+      const spoke = (Math.floor(((Math.atan2(y, x) - radians) / TAU) * spokes) + .5) * TAU / spokes + radians;
+      point.x = Math.cos(spoke) * ring;
+      point.y = Math.sin(spoke) * ring;
     };
   }
 
@@ -367,7 +365,7 @@
     const pixels = raster.image.data;
     const mapper = mappers[settings.type](settings, shape);
     const point = {x: 0, y: 0, fringe: 0};
-    const edge = settings.edge || "clamp";
+    const edge = settings.edge || (settings.type === "mosh-kaleido" ? "repeat" : "clamp");
     for (let y = 0; y < height; y++) {
       const py = (y - centerY) * delta;
       for (let x = 0; x < width; x++) {
@@ -425,6 +423,7 @@
   }
 
   const inks = {
+    mono: [[0, 0, 0], [255, 255, 255]],
     ivory: [[18, 26, 22], [240, 226, 192]],
     clay: [[62, 23, 20], [226, 167, 122]],
     blue: [[17, 37, 66], [205, 228, 223]]
