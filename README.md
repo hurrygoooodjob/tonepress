@@ -16,7 +16,7 @@ Remove Background runs a bundled MediaPipe portrait model on your device. The ho
 
 ## Same-source comparison
 
-The v11 benchmarks use the same Vernazza photo and a four-second, 24 fps study with a moving target, an occluder, frame numbers and an original test soundtrack. The playback comparison starts each temporal effect from a verified source frame, then pairs the complete watermarked Mosh-Pro visitor preview with Tonepress v11 or v10. Mosh-Pro preview recordings are silent. The gallery pairs each of the 74 effects on the still and at three observed video playhead times. Guest preview timing, tear patterns and procedural noise can differ between runs.
+The v11 benchmarks use the same Vernazza photo and a four-second, 24 fps study with a moving target, an occluder, frame numbers and an original test soundtrack. The playback comparison starts each temporal effect from a verified source frame, then pairs the complete watermarked Mosh-Pro visitor preview with Tonepress. Data Mosh now defaults to v12, alongside v11 and v10. [Loop the pillar crossing](https://hurrygoooodjob.github.io/tonepress/compare/?loop=crossing#mosh-data-mosh) from 1.25 to 3.50 seconds to compare block trails. Slit Scan and Feedback retain their v11 and v10 recordings. Mosh-Pro preview recordings are silent. The gallery pairs each of the 74 effects on the still and at three observed video playhead times. Guest preview timing, tear patterns and procedural noise can differ between runs.
 
 ## Import and export
 

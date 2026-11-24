@@ -4,11 +4,11 @@
 
 The collection matches 74 public effect names to 74 selectable Tonepress implementations. Eight use filters from the original library. The other 66 extend it to 131 unique effects. Open a row to try it on the built-in media.
 
-[Synchronized comparison of Data Mosh, Slit Scan and Feedback](https://hurrygoooodjob.github.io/tonepress/compare/) · [All 74 on the same photo and video](https://hurrygoooodjob.github.io/tonepress/compare/catalog/)
+[Watch the synchronized Data Mosh crossing in v12, v11 and v10](https://hurrygoooodjob.github.io/tonepress/compare/?loop=crossing#mosh-data-mosh) · [All 74 on the same photo and video](https://hurrygoooodjob.github.io/tonepress/compare/catalog/)
 
 ## Differences that affect the result
 
-- Data Mosh holds a decoded frame, accumulates local motion and refreshes blocks as prediction errors increase. Feedback starts with neutral geometry and hue. Slit Scan combines slices held in a bounded frame history. Play a moving video to see both. A seek starts a new history.
+- Data Mosh holds a decoded frame, accumulates local motion and refreshes blocks as prediction errors increase. Feedback starts with neutral geometry and hue. Slit Scan combines slices held in a bounded frame history. Play a moving video to see these temporal effects. A seek starts a new history.
 - Within the Mosh-Pro collection, Half Tone offers monochrome and color separations, Pixelate has independent axes, and Dither has dedicated controls. The main studio still opens with its subtle true-color ink screen.
 - Push Draw and Mask Draw use editable 8 × 8 maps. Media places a second still image over the source. Texture accepts a texture image and includes generated paper. Uploaded layer images are scaled to a maximum edge of 768 pixels.
 - Audio Visualizer reads a browser-decodable soundtrack from an imported video up to 96 MiB. The frame-numbered motion study includes a synthesized audio track.

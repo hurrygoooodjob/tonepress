@@ -65,6 +65,9 @@ h3 { font-size: 1rem; }
 .player-controls, .frame-controls { margin-bottom: 10px; padding: 7px; background: #edf5f1; border: 1px solid var(--rule); border-radius: 3px; }
 .player-controls output, .frame-controls span { color: var(--quiet); font-size: .85rem; }
 .player-controls input { min-width: 70px; flex: 1; accent-color: var(--accent); }
+.player-controls output { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.player-controls .notes:empty { display: none; }
+.player-controls button[aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: #11453f; }
 .sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .side { min-width: 0; }
 .side header { padding: 2px 0 7px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -97,6 +100,8 @@ footer p+p { margin-top: 3px; }
 }
 @media(max-width:485px) {
   .effects { grid-template-columns: 1fr; max-height: 126px; }
+  .effect-header { flex-wrap: wrap; }
+  .player-controls input { flex-basis: 45%; }
   .sides { grid-template-columns: 1fr; }
   .frame { aspect-ratio: 16/10; }
   .metric-table { font-size: .76rem; }

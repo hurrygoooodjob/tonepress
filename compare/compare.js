@@ -26,7 +26,7 @@
     '查看完整界面':['画面全体を表示','전체 인터페이스 보기'],'放大工作画面':['プレビューを拡大','미리보기 확대'],
     '当前浏览器无法解码此文件。可打开媒体文件使用系统播放器。':['このブラウザで再生できません。システムのプレーヤーでファイルを開いてください。','브라우저에서 재생할 수 없습니다. 시스템 플레이어로 파일을 여세요.'],
     '源':['素材','소스'],'打开媒体文件':['メディアファイルを開く','미디어 파일 열기'],
-    '在 v11 实际调试':['v11 エディターで調整','v11 편집기에서 조정'],'采集与设置':['記録と設定','캡처 및 설정'],
+    '用这个效果试作 ↗':['この効果を試す ↗','이 효과 사용 ↗'],'采集与设置':['記録と設定','캡처 및 설정'],
     '同步播放':['同期再生','동기 재생'],'从开头':['最初から','처음부터'],'暂停':['一時停止','일시 정지'],
     '共享源视频进度':['共通素材の再生位置','공통 소스의 재생 위치'],'同步播放音轨':['同期再生の音声','동기 재생 오디오'],
     '静音':['ミュート','음소거'],'原版声轨':['オリジナルの音声','원본 오디오'],'印相室声轨':['Tonepress の音声','Tonepress 오디오'],
@@ -60,8 +60,9 @@
   let current=rows.find(row=>`#${row.id}`===location.hash) || rows.find(row=>row.priority) || rows[0];
   let tab='video';
   let frameTime=null;
-  let version=defaultVersion || 'v11';
-  let closePlayer=()=>{};
+  let player=null;
+  let openCrossing=online&&new URLSearchParams(location.search).get('loop')==='crossing';
+  const chosenVersions=new Map();
 
   function node(tag, text, className) {
     const element=document.createElement(tag);
@@ -112,12 +113,25 @@
     });
     list.replaceChildren(...(buttons.length?buttons:[node('p','没有符合条件的效果。')]));
   }
-  function versionRow(row) { return row.versions ? {...row,...row.versions[version]} : row; }
+  function versionFor(row) {
+    const tried=chosenVersions.get(row.id);
+    if(row.versions?.[tried]) return tried;
+    if(row.versions?.[row.defaultVersion]) return row.defaultVersion;
+    if(row.versions?.[defaultVersion]) return defaultVersion;
+    return Object.keys(row.versions||{})[0] || localVersion;
+  }
+  function versionRow(row) {
+    const version=versionFor(row);
+    return row.versions?.[version]?{...row,...row.versions[version],version}:row;
+  }
   function select(row,fromList=false) {
+    const previous=current?.id===row.id?player?.state():null;
     current=versionRow(row);
+    const entry=openCrossing&&current.occlusion?{position:current.occlusion.start,looping:true}:null;
+    openCrossing=false;
     resetFrame();
     renderList();
-    render();
+    render(previous??entry);
     if(`${location.hash}`!==`#${row.id}`) history.replaceState(null,'',`#${row.id}`);
     if(fromList) byId('effectTitle').focus({preventScroll:true});
   }
@@ -168,7 +182,7 @@
     image.alt=alt;
     return image;
   }
-  function fitPicture(heading,frame,player,media) {
+  function fitPicture(heading,frame,player,media,full) {
     const [x,y,w,h]=media.viewport;
     const toggle=button('',()=>set(!zoom));
     toggle.className='preview-toggle';
@@ -183,9 +197,10 @@
       else player.removeAttribute('style');
     }
     heading.append(toggle);
-    set(true);
+    set(!full);
+    return ()=>!zoom;
   }
-  function buildSide(side,name) {
+  function buildSide(side,name,full=false) {
     const record=current[side];
     const media=mediaFor(record);
     const article=node('article','','side');
@@ -195,6 +210,7 @@
     const figure=node('figure');
     const frame=node('div','','frame');
     let player=null;
+    let isFull=()=>false;
     if(media?.path) {
       if(tab==='video'&&frameTime===null) {
         player=video(media.path,!current.sync);
@@ -202,7 +218,7 @@
         player.addEventListener('error',()=>{frame.append(node('p',l('当前浏览器无法解码此文件。可打开媒体文件使用系统播放器。','The browser could not decode this file. Try opening it in a system media player.')));},{once:true});
         frame.append(player);
         if(online&&current.sync&&media.width&&media.height) {
-          if(side==='original'&&media.viewport) fitPicture(head,frame,player,media);
+          if(side==='original'&&media.viewport) isFull=fitPicture(head,frame,player,media,full);
           else frame.style.aspectRatio=`${media.width} / ${media.height}`;
         }
       } else frame.append(photo(media.path,`${name} ${current.name}${number(frameTime)&&tab==='video'?` · ${sec(frameTime)}`:''}`));
@@ -222,7 +238,7 @@
     }
     article.append(head,figure);
     if(online&&side==='tonepress') {
-      const editor=link(l('在 v11 实际调试','Tune in the v11 editor'),`../?mosh&sample=motion&effect=${encodeURIComponent(current.id)}`);
+      const editor=link(l('用这个效果试作 ↗','Try this effect ↗'),`../?mosh&sample=motion&effect=${encodeURIComponent(current.id)}`);
       editor.className='open-editor';
       article.append(editor);
     }
@@ -239,7 +255,7 @@
       if(media.settings) parameters.append(node('pre',typeof media.settings==='string'?media.settings:JSON.stringify(media.settings,null,2)));
       article.append(parameters);
     }
-    return {article,player};
+    return {article,player,isFull};
   }
 
   // Play both media timelines against confirmed source anchors and correct decoder drift.
@@ -259,10 +275,10 @@
   }
   function clamp(value,min,max) {return Math.max(min,Math.min(max,value));}
 
-  function connectPlayback(left,right,sync,host) {
+  function connectPlayback(left,right,sync,host,previous,occlusion) {
     const play=button(l('同步播放','Play together'),()=>running?pause():start());
     play.className='primary';
-    const reset=button(l('从开头','Restart'),()=>seek(sync.start));
+    const reset=button(l('从开头','Restart'),()=>seek(looping?occlusion.start:sync.start));
     const range=node('input');
     range.type='range'; range.min=sync.start; range.max=sync.end; range.step='any';
     range.setAttribute('aria-label',l('共享源视频进度','Shared source-video position'));
@@ -272,19 +288,40 @@
     sound.add(new Option(l('静音','Muted'),'mute'));
     if(current.original.video.hasAudio!==false) sound.add(new Option(l('原版声轨','Original sound'),'a'));
     if(current.tonepress.video.hasAudio!==false) sound.add(new Option(l('印相室声轨','Tonepress sound'),'b'));
-    sound.addEventListener('change',()=>{
+    function setSound() {
       left.muted=sound.value!=='a'; right.muted=sound.value!=='b';
-    });
+    }
+    if([...sound.options].some(option=>option.value===previous?.sound)) sound.value=previous.sound;
+    sound.addEventListener('change',setSound);
+    setSound();
+    const loop=occlusion?button(l('循环看遮挡段','Loop pillar crossing','柱を横切る区間をループ','기둥을 지나는 구간 반복'),()=>{
+      setLoop(!looping);
+      if(looping) seek(occlusion.start);
+    }):null;
+    if(loop) loop.id='occlusionLoop';
     const note=node('span','','notes');
     note.setAttribute('role','status');
-    host.append(play,reset,range,time,sound,note);
+    host.append(play,reset,range,time,sound);
+    if(loop) host.append(loop);
+    host.append(note);
     host.hidden=false;
     const sources=[left,right];
     const maps=[sync.a,sync.b];
-    let running=false,disposed=false,frame=0;
+    let running=false,disposed=false,frame=0,attempt=0;
     let end=sync.end;
-    let cursor=sync.start;
+    let cursor=previous?.position??sync.start;
+    let looping=Boolean(loop&&previous?.looping);
     const loaded=new Set();
+    function setLoop(enabled) {
+      looping=enabled;
+      if(loop) loop.setAttribute('aria-pressed',String(looping));
+    }
+    function playbackEnd() {
+      return looping?Math.min(occlusion.end,end):end;
+    }
+    function readCursor() {
+      return running&&loaded.has(left)&&!left.seeking?clamp(sourceAt(sync.a,left.currentTime),sync.start,end):cursor;
+    }
     function show(t) {
       cursor=clamp(t,sync.start,end);
       range.value=cursor;
@@ -295,16 +332,23 @@
       for(let i=0;i<sources.length;i++) if(loaded.has(sources[i])) sources[i].currentTime=mediaAt(maps[i],cursor);
     }
     function pause(pos) {
+      const position=number(pos)?pos:readCursor();
       running=false;
+      attempt++;
       cancelAnimationFrame(frame);
       for(const source of sources) source.pause();
       play.textContent=l('同步播放','Play together');
-      if(number(pos)) seek(pos);
+      if(!disposed) seek(position);
     }
     function tick() {
       if(!running||disposed) return;
       const t=sourceAt(sync.a,left.currentTime);
-      if(t>=end-.012||left.ended) { pause(end); return; }
+      if(t>=playbackEnd()-(looping?0:.012)||left.ended) {
+        if(!looping) {pause(end);return;}
+        seek(occlusion.start);
+        frame=requestAnimationFrame(tick);
+        return;
+      }
       show(t);
       const desired=mediaAt(sync.b,t);
       const drift=right.currentTime-desired;
@@ -316,37 +360,55 @@
     async function start() {
       if(loaded.size!==2||disposed) return;
       note.textContent='';
-      if(cursor>=end-.025) seek(sync.start);
+      if(cursor>=playbackEnd()-.025) seek(looping?occlusion.start:sync.start);
+      const turn=++attempt;
       try {
         running=true;
         play.textContent=l('暂停','Pause');
         await Promise.all(sources.map(source=>source.play()));
-        if(running&&!disposed) frame=requestAnimationFrame(tick);
+        if(running&&!disposed&&turn===attempt) frame=requestAnimationFrame(tick);
       } catch {
-        if(disposed) return;
+        if(disposed||turn!==attempt) return;
         pause();
         note.textContent=l('浏览器未能同时开始播放。可分别使用媒体控制。','The browser could not start both videos together. Independent playback is available.');
         for(const source of sources) source.controls=true;
       }
     }
     function onMeta(source,i) {
+      if(disposed) return;
       loaded.add(source);
       if(number(source.duration)) end=Math.min(end,sourceAt(maps[i],source.duration));
       if(loaded.size===2) {
         range.max=end;
         if(end<=sync.start) note.textContent=l('解码时长与采集锚点不重叠。','The decoded durations do not overlap on the shared timeline.');
-        else {play.disabled=reset.disabled=range.disabled=false; seek(sync.start);}
+        else {
+          play.disabled=reset.disabled=range.disabled=false;
+          if(loop) loop.disabled=end<=occlusion.start;
+          if(loop?.disabled) setLoop(false);
+          seek(cursor);
+          if(previous?.running) start();
+        }
       }
     }
     play.disabled=reset.disabled=range.disabled=true;
-    range.addEventListener('input',()=>seek(Number(range.value)));
+    if(loop) loop.disabled=true;
+    setLoop(looping);
+    range.addEventListener('input',()=>{
+      const value=Number(range.value);
+      if(looping&&(value<occlusion.start||value>=playbackEnd())) setLoop(false);
+      seek(value);
+    });
     sources.forEach((source,i)=>{
       if(source.readyState>=1) onMeta(source,i);
       else source.addEventListener('loadedmetadata',()=>onMeta(source,i),{once:true});
       source.addEventListener('error',()=>{note.textContent=l('有一侧的视频无法解码。','One video could not be decoded.');},{once:true});
     });
-    show(sync.start);
-    return ()=>{ disposed=true; pause(); };
+    show(cursor);
+    return {
+      state:()=>({position:readCursor(),running:running||loaded.size<2&&Boolean(previous?.running),sound:sound.value,looping}),
+      pause,
+      close:()=>{disposed=true;pause();}
+    };
   }
 
   function renderFrames() {
@@ -433,12 +495,19 @@
     if(current.sync) content.append(node('p',l('同步仅在两条时间轴的重叠区间内运行，中间时刻按已记录锚点插值。完整录屏保留可见界面及水印。',
       'Sync uses the overlapping source times and interpolates between the recorded anchors. The complete recording retains the watermark and interface.')));
   }
-  function render() {
-    closePlayer();
-    closePlayer=()=>{};
+  function render(previous) {
+    player?.close();
+    player=null;
     if(!current) return;
     byId('group').textContent=l(current.group,current.groupEnglish)+(current.priority?l(' · 重点视频',' · Focus comparison'):'');
     byId('effectTitle').textContent=current.name;
+    if(online) {
+      const versions=Object.keys(current.versions||{}).sort((a,b)=>Number(b.slice(1))-Number(a.slice(1)));
+      const selector=byId('version');
+      selector.replaceChildren(...versions.map(value=>new Option(value,value)));
+      selector.value=current.version;
+      byId('versionSwitch').hidden=versions.length<2;
+    }
     mediaButtons.forEach((item,i)=>item.setAttribute('aria-pressed',String(tab===(i===0?'photo':'video'))));
     const chosenA=number(frameTime)&&atFrame(current.original);
     const chosenB=number(frameTime)&&atFrame(current.tonepress);
@@ -446,15 +515,22 @@
     const same=tab==='photo'?current.samePhoto:frameTime===null?!!current.sync:frameVerified;
     const simpleStatus=tab==='photo'?'确认同一照片输入':frameTime===null?l('同一源视频时间，可同步播放','Same source video, ready to play together'):`同一源视频 ${sec(frameTime)} 的双边取帧`;
     const description=same?simpleStatus:`${available(current)} · ${tab==='photo'?'尚无可确认的同源照片对照':frameTime===null?l('尚无可确认的同源同步视频','No confirmed shared timeline is available'):chosenA&&chosenB?'两侧按目标播放头取帧，未证实为同一源帧':'当前时刻缺少一侧实测'}`;
-    byId('effectStatus').textContent=description;
+    const cue=current.occlusion?l('留意红色标记经过条纹立柱时留下的残影，以及它离开立柱后的碎块。','Watch the red marker pass behind the striped pillar and the fragments that linger afterward.',
+      '赤いマーカーが縞の柱の後ろを通り過ぎたあとに残る断片に注目してください。','빨간 표식이 줄무늬 기둥 뒤를 지나고 나서 남는 조각을 보세요.'):null;
+    byId('effectStatus').textContent=[description,cue].filter(Boolean).join(' · ');
     const controls=byId('playerControls');
     controls.replaceChildren(); controls.hidden=true;
     renderFrames();
-    const original=buildSide('original',l('Mosh-Pro 原版','Mosh-Pro original'));
-    const tonepress=buildSide('tonepress',[l('印相室','Tonepress'),online?version:localVersion].filter(Boolean).join(' '));
+    const original=buildSide('original',l('Mosh-Pro 原版','Mosh-Pro original'),previous?.full);
+    const tonepress=buildSide('tonepress',[l('印相室','Tonepress'),online?current.version:localVersion].filter(Boolean).join(' '));
     sides.replaceChildren(original.article,tonepress.article);
     if(tab==='video'&&frameTime===null&&current.sync&&original.player&&tonepress.player) {
-      closePlayer=connectPlayback(original.player,tonepress.player,current.sync,controls);
+      const connected=connectPlayback(original.player,tonepress.player,current.sync,controls,previous,current.occlusion);
+      player={
+        state:()=>({...connected.state(),full:original.isFull()}),
+        pause:connected.pause,
+        close:connected.close
+      };
     }
     renderMeasurements();
     renderOfficial();
@@ -471,10 +547,13 @@
     byId('catalogLink').textContent=l('74 项逐个看','Browse all 74 effects');
     byId('reportLanguage').setAttribute('aria-label',l('语言','Language'));
     byId('reportLanguage').value=language;
-    byId('summary').textContent=l(`同一测试视频 · ${summary.originalClips} 项原版访客录屏 · v10 ${coverage.v10} 项 · v11 ${coverage.v11} 项`,
-      `One source video · ${summary.originalClips} Mosh-Pro visitor recordings · ${coverage.v10} v10 exports · ${coverage.v11} v11 exports`,
-      `同一素材 · Mosh-Pro ゲスト録画 ${summary.originalClips} 本 · v10 ${coverage.v10} 本 · v11 ${coverage.v11} 本`,
-      `동일 소스 · Mosh-Pro 게스트 녹화 ${summary.originalClips}개 · v10 ${coverage.v10}개 · v11 ${coverage.v11}개`);
+    const updates=coverage.v12?l('Data Mosh 新增 v12 成片','Data Mosh adds a v12 export',
+      'Data Mosh に v12 の書き出し動画を追加','Data Mosh에 v12 내보내기 영상 추가'):null;
+    const intro=l(`同一测试视频 · ${summary.originalClips} 项原版访客录屏`,
+      `One source video · ${summary.originalClips} Mosh-Pro visitor recordings`,
+      `同一素材 · Mosh-Pro ゲスト録画 ${summary.originalClips} 本`,
+      `동일 소스 · Mosh-Pro 게스트 녹화 ${summary.originalClips}개`);
+    byId('summary').textContent=[intro,updates].filter(Boolean).join(' · ');
     byId('onlineNotes').textContent=l('原版为访客界面实录，放大画面保留水印，完整界面随时可看。原版导出需登录。两侧从确认的源起点同步，录屏帧率可变，可能跳过源帧。',
       'Mosh-Pro is a visitor preview recording. The picture view preserves the watermark, and the full interface remains available. Original export requires sign-in. Both videos start from the verified source start; the recording may skip source frames.',
       'Mosh-Pro はゲスト画面の録画です。プレビュー拡大時も透かしを残し、画面全体に戻せます。書き出しにはログインが必要です。両側とも確認した素材の先頭から再生し、録画はフレームを飛ばす場合があります。',
@@ -492,8 +571,6 @@
     document.querySelector('.filters').hidden=true;
     byId('catalogLink').hidden=false;
     byId('reportLanguage').hidden=false;
-    byId('versionSwitch').hidden=false;
-    byId('version').value=version;
     mediaButtons.forEach(item=>item.hidden=true);
     byId('onlineNotes').hidden=false;
     byId('reportLanguage').addEventListener('change',event=>{
@@ -509,7 +586,7 @@
       select(rows.find(row=>row.id===current.id));
     });
     byId('version').addEventListener('change',event=>{
-      version=event.currentTarget.value;
+      chosenVersions.set(current.id,event.currentTarget.value);
       select(rows.find(row=>row.id===current.id));
     });
   } else {
@@ -526,6 +603,9 @@
     const row=rows.find(item=>`#${item.id}`===location.hash);
     if(row) select(row);
   });
-  addEventListener('pagehide',()=>closePlayer());
+  addEventListener('pagehide',event=>{
+    if(event.persisted) player?.pause();
+    else player?.close();
+  });
   select(current);
 })();

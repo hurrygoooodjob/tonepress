@@ -6655,63 +6655,268 @@ html:not(:lang(en)) #cover-title { font-size: clamp(45px, 6.1vw, 102px); letter-
     for (let channel=0;channel<4;channel++) destination[i+channel]=mix(current[j+channel],prior[k+channel],amount);
   }
 
+  function moshTexture(lumas,w,h,cx,cy,block) {
+    let horizontal=0,vertical=0;
+    const radius=Math.max(2,Math.floor(block*.32));
+    for(let oy=-radius;oy<=radius;oy+=2)for(let ox=-radius;ox<=radius;ox+=2){
+      const x=limit(cx+ox,w-1),y=limit(cy+oy,h-1);
+      const left=y*w+limit(x-1,w-1),right=y*w+limit(x+1,w-1);
+      const above=limit(y-1,h-1)*w+x,below=limit(y+1,h-1)*w+x;
+      horizontal+=Math.abs(lumas[left]-lumas[right]);
+      vertical+=Math.abs(lumas[above]-lumas[below]);
+    }
+    const energy=Math.max(horizontal,vertical);
+    return {axis:horizontal > vertical ? 0 : 1,
+      aperture:clamp(Math.abs(horizontal-vertical)/Math.max(1,energy),0,1)*clamp(energy/(16*radius*radius),0,1)};
+  }
+
+  function dominantMotion(current,previous,w,h,delta) {
+    const radius=Math.max(2,Math.min(8,Math.ceil(1+delta*85)));
+    const stride=Math.max(5,Math.floor(Math.min(w,h)/25));
+    if(w<=radius*2 || h<=radius*2) return [0,0];
+    const steps=[];
+    for(let y=radius;y<h-radius;y+=stride)
+      for(let x=radius;x<w-radius;x+=stride)steps.push(y*w+x);
+    const cost=(dx,dy)=>{
+      const offset=dy*w+dx;
+      let distance=steps.length*.11*(Math.abs(dx)+Math.abs(dy));
+      for(const i of steps)distance+=Math.min(32,Math.abs(current[i]-previous[i+offset]));
+      return distance;
+    };
+    const rest=cost(0,0);
+    let best=rest,bx=0,by=0;
+    for(let dy=-radius;dy<=radius;dy++)for(let dx=-radius;dx<=radius;dx++){
+      const error=cost(dx,dy);
+      if(error<best){best=error;bx=dx;by=dy;}
+    }
+    return rest-best>.28*steps.length ? [bx,by] : [0,0];
+  }
+
+  function sparseMotion(current,previous) {
+    let active=0,sum=0;
+    const stride=current.length<24000?5:13;
+    for(let i=0;i<current.length;i+=stride) {
+      const change=Math.abs(current[i]-previous[i]);
+      if(change>3) {sum+=change;active++;}
+    }
+    const coverage=active/Math.ceil(current.length/stride);
+    return active>=2 && coverage<.12 ? clamp((sum/active-5)/55,0,1) : 0;
+  }
+
+  function localActivity(current,previous,w,h,col,row,block) {
+    let changed=0,total=0;
+    const right=Math.min(w,(col+1)*block+1),bottom=Math.min(h,(row+1)*block+1);
+    for(let y=Math.max(0,row*block-1);y<bottom;y+=2)for(let x=Math.max(0,col*block-1);x<right;x+=2){
+      const i=y*w+x;
+      changed+=Math.abs(current[i]-previous[i]);total++;
+    }
+    return clamp(changed/(total*27),0,1);
+  }
+
+  function ridgeCenter(previous,w,h,x,y,block,axis) {
+    const span=Math.floor(block*.38);
+    let peak=-1,offset=0;
+    for(let step=-span;step<=span;step++){
+      const at=offsetAt(x+(axis===0?step:0),y+(axis===1?step:0),w,h);
+      const value=luma(previous,at)*previous[at+3]/255-Math.abs(step)*2;
+      if(value>peak){peak=value;offset=step;}
+    }
+    return offset;
+  }
+
   function dataMosh(frame,s,hist,delta) {
     const {w,h,data}=frame;
     const block=Math.max(5,Math.round(w/49*(.48+s.size*.12)));
     const field=motionField(hist.lum,hist.prevLum,w,h,block,Math.min(22,Math.round(7+delta*72)));
-    const count=field.strength.length;
+    const {cols,rows,strength}=field;
+    const count=strength.length;
     const flow=s.flow/100, amount=s.strength/100;
+    if(!amount) return data;
     if(!hist.mosh) {
-      hist.mosh={seed:hist.result,energy:0,x:new Float32Array(count),y:new Float32Array(count)};
+      hist.mosh={anchor:hist.result,energy:0,
+        vx:new Float32Array(count),vy:new Float32Array(count),memory:new Float32Array(count),
+        bendX:new Float32Array(count),bendY:new Float32Array(count),local:new Float32Array(count),sparse:0};
     }
     const track=hist.mosh;
     let changed=0, samples=0;
     for(let i=0;i<hist.lum.length;i+=113){
       changed+=Math.abs(hist.lum[i]-hist.prevLum[i]);samples++;
     }
-    track.energy+=changed/(255*samples);
-    const displacementX=new Float32Array(count),displacementY=new Float32Array(count);
+    const sceneChange=changed/(255*samples);
+    track.energy+=sceneChange;
+    const isolated=sceneChange<.018?sparseMotion(hist.lum,hist.prevLum):0;
+    track.sparse=Math.max(0,Math.min(2,track.sparse+delta*(isolated>0?isolated*2.65:-1.5)));
+    let globalX=0, globalY=0, votes=0;
     for(let i=0;i<count;i++){
-      const reliability=clamp((field.strength[i]-.045)*2.2,0,1);
-      const gain=(.56+flow*.89)*(.69+probability(i,4)*.63);
-      track.x[i]+=field.xFlow[i]*reliability*gain;
-      track.y[i]+=field.yFlow[i]*reliability*gain;
-      // Prediction errors accumulate before a block breaks away from the held reference.
-      const threshold=(.63+amount*.57)*(.84+probability(i,19)*.42);
-      const slip=clamp((track.energy-threshold)*4.1,0,1);
-      const release=slip*slip*(3-2*slip);
-      displacementX[i]=track.x[i]*release;
-      displacementY[i]=track.y[i]*release;
+      const vote=clamp((strength[i]-.03)*2.6,0,1);
+      globalX+=clamp(field.xFlow[i],-block*.45,block*.45)*vote;
+      globalY+=clamp(field.yFlow[i],-block*.45,block*.45)*vote;
+      votes+=vote;
     }
-    const localAverage=(field)=>{
-      const smooth=new Float32Array(count);
-      for(let i=0;i<count;i++){
-        const col=i%fieldCols,row=Math.floor(i/fieldCols);
-        const a=row*fieldCols+Math.max(0,col-1),b=row*fieldCols+Math.min(fieldCols-1,col+1);
-        const c=Math.max(0,row-1)*fieldCols+col,d=Math.min(fieldRows-1,row+1)*fieldCols+col;
-        smooth[i]=field[i]*.58+(field[a]+field[b]+field[c]+field[d])*.105;
+    const consensus=Math.max(count*.048,votes);
+    const [cameraX,cameraY]=dominantMotion(hist.lum,hist.prevLum,w,h,delta);
+    globalX=mix(globalX/consensus,cameraX,.75);
+    globalY=mix(globalY/consensus,cameraY,.75);
+    const dx=new Float32Array(count),dy=new Float32Array(count),refresh=new Float32Array(count);
+    const shearX=new Float32Array(count),shearY=new Float32Array(count),outliers=new Float32Array(count);
+    const folds=new Float32Array(count),ridge=new Int8Array(count),normal=new Int8Array(count),holdRow=new Int16Array(count);
+    const plateaus=new Float32Array(count),ridgeSource=new Int8Array(count),streakAxis=new Int8Array(count);
+    const release=new Float32Array(count);
+    const regionCols=Math.ceil(cols/2);
+    for(let i=0;i<count;i++){
+      const col=i%cols,row=Math.floor(i/cols);
+      const left=row*cols+Math.max(0,col-1),right=row*cols+Math.min(cols-1,col+1);
+      const above=Math.max(0,row-1)*cols+col,below=Math.min(rows-1,row+1)*cols+col;
+      const confidence=clamp((strength[i]-.035)*2.5,0,1);
+      let localX=0,localY=0,neighbors=0;
+      for(const neighbor of [left,right,above,below]){
+        const weight=clamp((strength[neighbor]-.025)*2.8,0,1);
+        localX+=field.xFlow[neighbor]*weight;
+        localY+=field.yFlow[neighbor]*weight;
+        neighbors+=weight;
       }
-      return smooth;
-    };
-    const fieldCols=field.cols,fieldRows=field.rows;
-    const disX=localAverage(displacementX),disY=localAverage(displacementY);
+      const vx=mix((localX+globalX*.85)/(neighbors+.85),field.xFlow[i],confidence*.83);
+      const vy=mix((localY+globalY*.85)/(neighbors+.85),field.yFlow[i],confidence*.83);
+      const drift=1-Math.exp(-9*delta);
+      track.vx[i]=mix(track.vx[i],vx,drift);
+      track.vy[i]=mix(track.vy[i],vy,drift);
+      if(track.sparse>0) {
+        const local=isolated>0 ? localActivity(hist.lum,hist.prevLum,w,h,col,row,block) : 0;
+        track.local[i]=Math.max(local,track.local[i]*Math.exp(-delta*2.4));
+      }
+      const energy=track.energy+track.sparse*track.local[i];
+      const onset=(.61+amount*.47)*(.84+probability(i,19)*.33);
+      const spill=clamp((energy-onset)*5,0,1);
+      release[i]=spill*spill*(3-2*spill);
+      const turnover=probability(i,Math.max(1,Math.floor(energy*23)),29);
+      const gain=flow*(1.31+probability(i,8)*1.1)*release[i];
+      dx[i]=mix(track.vx[i],vx,.36)*gain;
+      dy[i]=mix(track.vy[i],vy,.36)*gain;
+      const difference=Math.hypot(vx-globalX,vy-globalY);
+      outliers[i]=clamp((difference-.50)/Math.max(2.2,block*.26),0,.8);
+      const region=Math.floor(row/2)*regionCols+Math.floor(col/2);
+      const material=probability(region,6);
+      const start=.99+amount*.28+material*.19;
+      const damage=clamp((energy-start)*2.65,0,1);
+      holdRow[i]=Math.floor(probability(i,54)*block);
+      streakAxis[i]=Math.abs(vy+cameraY)>Math.abs(vx+cameraX) ? 1 : 0;
+      if(damage>.015) {
+        const cx=col*block+Math.floor(block/2),cy=row*block+Math.floor(block/2);
+        const texture=moshTexture(hist.prevLum,w,h,cx,cy,block);
+        const weak=clamp((material-.28)*2.6,0,1);
+        const pressure=texture.aperture*flow*damage*weak;
+        const phase=probability(region,17)*Math.PI*2+probability(i,17)*1.1+energy*(.68+probability(region,41)*1.25);
+        const curl=block*pressure*Math.sin(phase);
+        const drift=1-Math.exp(-14*delta);
+        // Oriented edges are underconstrained along one axis. Nearby prediction errors leave a bent copy.
+        track.bendX[i]=mix(track.bendX[i],texture.axis===0?curl:0,drift);
+        track.bendY[i]=mix(track.bendY[i],texture.axis===1?curl:0,drift);
+        shearX[i]=track.bendX[i]*1.27;
+        shearY[i]=track.bendY[i]*1.27;
+        const carry=flow*damage*(.45+1.35*weak);
+        dx[i]+=cameraX*carry;
+        dy[i]+=cameraY*carry;
+        if(material>.50 && texture.aperture>.46) {
+          normal[i]=texture.axis;
+          const alignment=Math.abs(texture.axis===0?cameraY:cameraX)/Math.max(1,Math.abs(cameraX)+Math.abs(cameraY));
+          const certainty=clamp((texture.aperture-.46)*3,0,1)*(.75+.25*alignment);
+          const settle=1-clamp((energy-1.58)*1.35,0,.82);
+          folds[i]=certainty*damage*flow*(.83+.82*settle);
+          plateaus[i]=certainty*damage*flow*1.16*settle;
+          ridge[i]=ridgeCenter(hist.result,w,h,cx,cy,block,texture.axis);
+          ridgeSource[i]=ridgeCenter(data,w,h,cx,cy,block,texture.axis);
+        }
+      }
+      track.memory[i]=Math.min(1,mix(track.memory[i],confidence,1-Math.exp(-6*delta)));
+      // Residuals are sparse: contiguous blocks can temporarily keep predicting through an occlusion.
+      const discard=(.11+flow*.22)+track.memory[i]*.26;
+      const decoded=turnover<discard ? .04 : .23+turnover*.37;
+      refresh[i]=(1-Math.pow(1-decoded,delta*24))*release[i]*(1-.28*amount)*
+        (1-.58*clamp(Math.max(Math.abs(shearX[i]),Math.abs(shearY[i]))/block,0,1));
+    }
     const tail=hist.frames;
-    const recent=tail.length ? tail[0].data : data;
     tail.push({time:s.time,data});
-    while(tail.length>1 && tail[1].time<=s.time-.078)tail.shift();
-    const refresh=clamp((track.energy-.91)*2.25,0,1)*(1-.34*flow*amount);
+    const lookback=.045+flow*.075;
+    while(tail.length>1 && tail[1].time<=s.time-lookback)tail.shift();
+    const recent=tail[0].data;
+    const previous=hist.result;
     const result=new Uint8ClampedArray(data.length);
     const retention=Math.min(1,amount/.3);
+    const decay=clamp((track.energy-1.19-amount*.40)/.17,0,1);
+    const holdColor=1-decay*decay*(3-2*decay);
+    const arc=Array.from({length:block},(_,v)=>Math.sin(Math.PI*(v+.5)/block));
+    const divisions=Array.from({length:block},(_,v)=>(v+.5)/block-.5);
     for(let y=0;y<h;y++){
-      const row=Math.floor(y/block)*field.cols;
+      const row=Math.floor(y/block)*cols;
+      const uy=divisions[y%block],cy=arc[y%block];
       for(let x=0;x<w;x++){
         const i=(y*w+x)*4, cell=row+Math.floor(x/block);
-        const j=offsetAt(x+disX[cell],y+disY[cell],w,h);
-        const r=track.seed[j]-recent[i],g=track.seed[j+1]-recent[i+1],b=track.seed[j+2]-recent[i+2];
-        const chroma=Math.max(r,g,b)-Math.min(r,g,b);
-        const stableChroma=clamp(1.4-chroma/108,.04,1);
-        const fresh=refresh*stableChroma*(.45+.55*probability(cell,29));
-        for(let k=0;k<4;k++)result[i+k]=mix(data[i+k],mix(track.seed[j+k],recent[i+k],fresh),retention);
+        if(release[cell]<.0001) {
+          for(let k=0;k<3;k++)result[i+k]=mix(data[i+k],track.anchor[i+k],retention);
+          result[i+3]=data[i+3];
+          continue;
+        }
+        const xb=x%block,yb=y%block,ux=divisions[xb],cx=arc[xb];
+        let mappedX=x+dx[cell]+shearX[cell]*(.26+.67*cy+ux*.64);
+        let mappedY=y+dy[cell]+shearY[cell]*(.12+.77*cx+uy*.57);
+        if(folds[cell]>.02) {
+          if(normal[cell]===0) {
+            mappedX=mix(mappedX,x-xb+block*.5+ridge[cell]+dx[cell],folds[cell]*cy);
+          } else {
+            mappedY=mix(mappedY,y-yb+block*.5+ridge[cell]+dy[cell],folds[cell]*cx);
+          }
+        }
+        const sx=limit(mappedX,w-1),sy=limit(mappedY,h-1);
+        const u=Math.floor(sx),v=Math.floor(sy),fx=sx-u,fy=sy-v;
+        const j=(v*w+u)*4,k=(v*w+Math.min(w-1,u+1))*4;
+        const l=(Math.min(h-1,v+1)*w+u)*4,m=l+(u<w-1?4:0);
+        const a=(1-fx)*(1-fy)*previous[j+3],b=fx*(1-fy)*previous[k+3];
+        const c=(1-fx)*fy*previous[l+3],d=fx*fy*previous[m+3];
+        const alpha=a+b+c+d,weight=release[cell]/255;
+        const anchorWeight=1-alpha*weight;
+        const anchorRed=track.anchor[i],anchorGreen=track.anchor[i+1],anchorBlue=track.anchor[i+2];
+        let red=anchorRed*anchorWeight+weight*(previous[j]*a+previous[k]*b+previous[l]*c+previous[m]*d);
+        let green=anchorGreen*anchorWeight+weight*(previous[j+1]*a+previous[k+1]*b+previous[l+1]*c+previous[m+1]*d);
+        let blue=anchorBlue*anchorWeight+weight*(previous[j+2]*a+previous[k+2]*b+previous[l+2]*c+previous[m+2]*d);
+        const freshRed=recent[i],freshGreen=recent[i+1],freshBlue=recent[i+2];
+        const newChroma=Math.max(freshRed,freshGreen,freshBlue)-Math.min(freshRed,freshGreen,freshBlue);
+        const anchorChroma=Math.max(anchorRed,anchorGreen,anchorBlue)-Math.min(anchorRed,anchorGreen,anchorBlue);
+        if(holdColor>.001 && anchorChroma>newChroma+34) {
+          // Highly distinct pieces of the held prediction are not immediately replaced by a weaker residual.
+          const separation=Math.max(Math.abs(freshRed-anchorRed),Math.abs(freshGreen-anchorGreen),Math.abs(freshBlue-anchorBlue));
+          const hold=holdColor*clamp((anchorChroma-newChroma-34)/70,0,1)*clamp((separation-30)/60,0,1)*track.anchor[i+3]/255;
+          red=mix(red,anchorRed,hold);green=mix(green,anchorGreen,hold);blue=mix(blue,anchorBlue,hold);
+        }
+        if(plateaus[cell]>.03) {
+          const axis=normal[cell];
+          const tangent=axis===0?cy:cx;
+          const axisPosition=axis===0?xb:yb;
+          const position=block*.5+ridgeSource[cell];
+          const donor=axis===0 ? offsetAt(x-xb+position,y+dy[cell],w,h) : offsetAt(x+dx[cell],y-yb+position,w,h);
+          const donorLuma=luma(recent,donor);
+          const priorLuma=.2126*red+.7152*green+.0722*blue;
+          const distance=Math.abs(axisPosition+.5-position)/block;
+          const expanded=plateaus[cell]*(.47+.53*tangent)*clamp((.28-distance)*8,0,1)*
+            clamp((donorLuma-priorLuma-16)/74,0,1)*recent[donor+3]/255;
+          red=mix(red,recent[donor],expanded);green=mix(green,recent[donor+1],expanded);blue=mix(blue,recent[donor+2],expanded);
+        }
+        const innovation=Math.max(Math.abs(freshRed-red),Math.abs(freshGreen-green),Math.abs(freshBlue-blue));
+        const blocked=clamp((innovation-26)/105,0,1);
+        const oldChroma=Math.max(red,green,blue)-Math.min(red,green,blue);
+        const saturationGain=clamp((newChroma-oldChroma-14)/62,0,.95);
+        const lumaRise=.2126*(freshRed-red)+.7152*(freshGreen-green)+.0722*(freshBlue-blue);
+        const highlightGain=clamp((lumaRise-34)/86,0,1)*(.57+.43*outliers[cell]);
+        // Unexpected color residuals from independently moving blocks are decoded sparsely.
+        let decoded=(recent[i+3]/255)*refresh[cell]*(1-blocked*outliers[cell])*
+          (1-blocked*saturationGain)*(1-blocked*highlightGain);
+        if((streakAxis[cell] ? xb : yb)===holdRow[cell] && blocked>.35 && release[cell]>.85) {
+          if(newChroma>oldChroma) decoded=Math.max(decoded,refresh[cell]*.7*recent[i+3]/255);
+          else decoded*=.52;
+        }
+        result[i]=mix(data[i],mix(red,freshRed,decoded),retention);
+        result[i+1]=mix(data[i+1],mix(green,freshGreen,decoded),retention);
+        result[i+2]=mix(data[i+2],mix(blue,freshBlue,decoded),retention);
+        result[i+3]=data[i+3];
       }
     }
     return result;
@@ -6871,8 +7076,12 @@ html:not(:lang(en)) #cover-title { font-size: clamp(45px, 6.1vw, 102px); letter-
   };
   const useLuma = new Set(["mosh-data-mosh","mosh-optical-flow"]);
   function drawTemporal(input,ctx,s) {
+    const dataMoshType=s.type==="mosh-data-mosh";
     const stillWash=s.type==="mosh-watercolor" && !s.videoSource;
-    if (!s.videoSource && !stillWash) return passthrough(ctx,input,s);
+    if (!s.videoSource && !stillWash) {
+      if(!dataMoshType) passthrough(ctx,input,s);
+      return;
+    }
     const highDetail=["mosh-data-mosh","mosh-feedback","mosh-slit-scan"].includes(s.type);
     const frame=read(input,s,highDetail?640:320);
     if(stillWash) return write(ctx,frame,watercolor(frame,s),s);
@@ -6881,7 +7090,9 @@ html:not(:lang(en)) #cover-title { font-size: clamp(45px, 6.1vw, 102px); letter-
     const delta=s.time-hist.time;
     const sameResolution=hist.w===w && hist.h===h;
     if (sameResolution && Math.abs(delta)<1e-6) {
-      return hist.first ? passthrough(ctx,input,s) : write(ctx,frame,hist.result,s);
+      if(!hist.first) return write(ctx,frame,hist.result,s);
+      if(!dataMoshType) return passthrough(ctx,input,s);
+      return;
     }
     const continuous=sameResolution && delta>0 && delta<.37;
     if (!continuous) {
@@ -6907,7 +7118,10 @@ html:not(:lang(en)) #cover-title { font-size: clamp(45px, 6.1vw, 102px); letter-
       while(hist.frames.length>1 && (hist.frames.length>42 || s.time-hist.frames[1].time>windowSeconds+.04)) hist.frames.shift();
     }
     hist.w=w;hist.h=h;hist.time=s.time;
-    if(hist.first) return passthrough(ctx,input,s);
+    if(hist.first) {
+      if(!dataMoshType) passthrough(ctx,input,s);
+      return;
+    }
     write(ctx,frame,hist.result,s);
   }
 
