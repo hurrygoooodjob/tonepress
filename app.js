@@ -88,6 +88,21 @@
   function updateTimeline() {
     if (!state.source) return;
     const video = state.kind === 'video';
+    const recipe=editor.previewing ? editor.previewSettings : editor.settings;
+    const types=recipe.layers.filter(layer=>layer.enabled && layer.strength>0).map(layer=>layer.type);
+    const needsFrames=types.some(id=>['mosh-data-mosh','mosh-optical-flow','mosh-slit-scan'].includes(id));
+    const needsAudio=types.includes('mosh-audio-visualizer');
+    const hint=needsAudio && (!video || state.sample || !state.file || state.file.size>96*1024*1024) ? '请导入带声音的视频查看频谱。'
+      : needsFrames && !video ? '这个效果需要连续视频帧。'
+      : needsFrames && state.source.paused ? '播放视频，查看连续帧产生的效果。' : '';
+    const cue=el('motionCue'),label=hint ? t(hint) : '';
+    if(cue.firstElementChild.textContent!==label)cue.firstElementChild.textContent=label;
+    const example=el('motionExample');example.hidden=video || !needsFrames || needsAudio;
+    if(!example.hidden){
+      const address=new URL(location.href);address.search='';address.hash='';address.searchParams.set('mosh','');address.searchParams.set('sample','video');
+      address.searchParams.set('effect',types.find(id=>['mosh-data-mosh','mosh-optical-flow','mosh-slit-scan'].includes(id)));example.href=address.href;
+    }
+    cue.hidden=!hint;
     const duration = video ? state.duration : PHOTO_DURATION;
     ui.transport.hidden = !video && !visibleTimed();
     ui.mute.hidden = !video;
@@ -257,7 +272,11 @@
     const scale = Math.min(1, cssScale * (window.devicePixelRatio || 1), maxLength / Math.max(state.width, state.height));
     const width = Math.max(1, Math.round(state.width * scale)), height = Math.max(1, Math.round(state.height * scale));
     originalPainter.render(state.source, {strength: 0, width, height});
+    const recipe=editor.previewing ? editor.previewSettings : editor.settings;
     const settings = {time:currentTime(), width, height};
+    if (state.kind==='video' && recipe.layers.some(layer=>layer.enabled && layer.type==='mosh-audio-visualizer')) {
+      settings.audioBuffer=TonepressLayerAudio.peek(state.file,schedule);
+    }
     if (editor.previewing) {
       trialPainter ??= TonepressStack.create(ui.effect);
       trialPainter.render(state.source, {...editor.previewSettings, ...settings});
@@ -488,6 +507,11 @@
       if (state.kind === 'video' && mode === 'frame') await waitForSeek(state.source);
       if (mode==="frame") render();
       const settings={...editor.settings,time:currentTime()};
+      if (state.kind==='video' && settings.layers.some(layer=>layer.enabled && layer.type==='mosh-audio-visualizer')) {
+        settings.audioBuffer=await TonepressLayerAudio.load(state.file);
+      }
+      if(settings.layers.some(layer=>layer.enabled && layer.strength>0 && layer.type==="mosh-remove-background")) await TonepressPerson.ready();
+      await Promise.all(settings.layers.filter(layer=>layer.enabled && layer.strength>0 && layer.image).map(layer=>TonepressLayerImages.load(layer.image)));
       if(mode==="frame") settings.history=painter.snapshot();
       const args={source:state.source,file:state.file,settings,signal:state.abort.signal,onProgress:update};
       let output;
@@ -592,13 +616,16 @@
     if (lastMessage) message(lastMessage.source, lastMessage.error, lastMessage.values);
     layout();
   });
+  document.addEventListener("tonepress:layer-image",schedule);
+  document.addEventListener("tonepress:person-ready",schedule);
+  document.addEventListener("tonepress:person-error",()=>{if(editor.previewSettings.layers.some(layer=>layer.enabled && layer.type==="mosh-remove-background"))message("人像模型无法加载。",true);});
   new ResizeObserver(layout).observe(ui.stage);
   paintComparison();
   updateExportInfo();
   const screens = TonepressScreens.connect({
     pickFile: () => ui.file.click(),
     enter(file) {
-      if (file || (!state.source && !state.importing)) loadMedia(file);
+      if (file || (!state.source && !state.importing)) loadMedia(file, !file && new URLSearchParams(location.search).get('sample')==='video');
       else layout();
     },
     leave() {

@@ -13,6 +13,10 @@
       localizers.length=0;
       host.replaceChildren();
       if (!layer) return;
+      // A newly selected media or image-mask layer needs its file picker immediately.
+      if ((definition.english==="Media" || definition.english==="Mask") && !layer.image) {
+        const folder=host.closest("details"); if(folder) folder.open=true;
+      }
       for(const control of definition.controls || []) {
         const row=document.createElement("div"), label=document.createElement("label");
         const id="param-"+control.key;
@@ -42,7 +46,7 @@
           upload.className="glyph-import";upload.onclick=()=>file.click();
           localizers.push(()=>{
             grid.setAttribute("aria-label",t(control.label));
-            upload.textContent=t("导入字形图片");
+            upload.textContent=t(control.importLabel || "导入字形图片");
             cells.forEach((cell,i)=>cell.setAttribute("aria-label",t("{row} 行 {col} 列", {row:Math.floor(i/8)+1,col:i%8+1})));
           });
           file.onchange=async()=>{
@@ -65,6 +69,33 @@
             finally {URL.revokeObjectURL(url);}
           };
           row.append(grid,upload,file);
+        } else if(control.kind==="image") {
+          const input=document.createElement("input"); input.type="file"; input.id=id; input.accept="image/png,image/jpeg,image/webp"; input.hidden=true;
+          const upload=document.createElement("button"); upload.type="button"; upload.className="glyph-import";
+          upload.onclick=()=>input.click();
+          localizers.push(()=>{upload.textContent=t(layer[control.key]?"更换图像":"选择图像");});
+          input.onchange=async()=>{
+            const file=input.files[0]; input.value=""; if (!file) return;
+            const img=new Image(), url=URL.createObjectURL(file);
+            try {
+              img.src=url; await img.decode();
+              const scale=Math.min(1,768/Math.max(img.width,img.height));
+              const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(img.width*scale)); c.height=Math.max(1,Math.round(img.height*scale));
+              c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+              const data=c.toDataURL("image/webp",.85);
+              if(data.length>1500000) throw Error();
+              await TonepressLayerImages.load(data);
+              if(active===layer){change(layer,control.key,data);localize();}
+            } catch {feedback("无法读取图像，请尝试 PNG、JPEG 或 WebP。",true);}
+            finally {URL.revokeObjectURL(url);}
+          };
+          row.append(upload,input);
+        } else if(control.kind==="range") {
+          const input=document.createElement("input"), output=document.createElement("output");
+          input.id=id; input.type="range"; input.min=control.min; input.max=control.max; input.step=control.step||1;
+          input.value=layer[control.key]??control.value; output.value=input.value; output.htmlFor=id;
+          input.oninput=()=>{output.value=input.value;change(layer,control.key,Number(input.value),input);};
+          row.classList.add("range-control"); row.append(input,output);
         } else {
           const select=control.kind==="select";
           const input=document.createElement(select?"select":"input");input.id=id;
@@ -73,7 +104,7 @@
             localizers.push(()=>{
               control.options.forEach((option,i)=>{input.options[i].textContent=t(option.label);});
             });
-          } else {input.type="text";input.maxLength=control.maxLength||40;}
+          } else {input.type=control.kind==="color"?"color":"text";input.maxLength=control.maxLength||40;}
           input.value=layer[control.key]??control.value;
           input.addEventListener(select?"change":"input",()=>change(layer,control.key,input.value,select?null:input));
           row.append(input);

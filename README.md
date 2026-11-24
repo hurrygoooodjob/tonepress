@@ -1,10 +1,18 @@
 # Tonepress · 印相室
 
-Tonepress is a browser studio for photo and video effects. It opens with a rotatable 3D CRT and starts with a fine halftone that preserves the original colors. Try 65 effects, layer them, compare against the original, or start from one of 14 built-in presets. Editing and export happen on your device.
+Tonepress is a browser studio for photo and video effects. It opens with a rotatable 3D CRT and starts with a fine halftone that preserves the original colors. Try 131 effects, layer them, compare against the original, or start from one of 14 built-in presets. Editing and export happen on your device.
 
 [Open Tonepress](https://hurrygoooodjob.github.io/tonepress/) · [Open the studio](https://hurrygoooodjob.github.io/tonepress/?studio) · [Open all effects](https://hurrygoooodjob.github.io/tonepress/?library)
 
 The interface and effect search are available in English, 日本語, 简体中文, and 한국어. The browser remembers your language and custom presets.
+
+## Mosh-Pro collection
+
+The collection includes independently implemented counterparts to all 74 effects in the public Mosh-Pro guide. It combines 66 additions with eight existing Tonepress effects. Choose **Mosh-Pro** in the bottom strip to browse the 13 categories. Try Luma Mesh on a still, or play a video through Data Mosh, Feedback or Slit Scan. Audition several effects before applying one. Cancel returns to the applied parameters and video position.
+
+[Try the collection with a sample clip](https://hurrygoooodjob.github.io/tonepress/?mosh&sample=video) · [All 74 effects and implementation differences](EFFECTS.md) · [Official reference guide](https://moshpro.app/guides/effects/)
+
+Remove Background runs a bundled MediaPipe portrait model on your device. The hosted edition loads it on first use. The standalone file contains both the model and its runtime. [Model and runtime credits](assets/person/NOTICE) · [Apache 2.0 license](assets/person/LICENSE)
 
 ## Import and export
 

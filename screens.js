@@ -5,7 +5,7 @@
     if (location.hash === '#cover') return 'cover';
     if (location.hash === '#studio') return 'studio';
     const query = new URLSearchParams(location.search);
-    return ['studio', 'library', 'effect', 'look'].some(key => query.has(key)) ? 'studio' : 'cover';
+    return ['studio', 'library', 'effect', 'look', 'mosh'].some(key => query.has(key)) ? 'studio' : 'cover';
   }
 
   const root = document.documentElement;

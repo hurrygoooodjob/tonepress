@@ -76,6 +76,11 @@
     for (const [type, definition] of Object.entries(pack.definitions)) {
       if (effects[type]) throw Error("重复效果 "+type);
       effects[type]={...definition,isNew:true};
+      if (definition.groupEnglish) {
+        let group = groups.find(item => item[0] === definition.group);
+        if (!group) { group = [definition.group, definition.groupEnglish, []]; groups.push(group); }
+        if (!group[2].includes(definition.english)) group[2].push(definition.english);
+      }
     }
   }
   const byEnglish=new Map(Object.values(effects).map(def=>[def.english,def]));
@@ -86,7 +91,7 @@
       def.group=local; def.groupEnglish=english;
     }
   }
-  if(byEnglish.size!==65 || Object.keys(effects).length!==65) throw Error("效果清单数量不匹配");
+  if(byEnglish.size !== Object.keys(effects).length || groups.flatMap(item=>item[2]).length !== byEnglish.size) throw Error("效果清单数量不匹配");
   const layer = (type, size, strength) => ({
     type, size: size ?? effects[type].size, strength: strength ?? effects[type].strength, enabled: true
   });

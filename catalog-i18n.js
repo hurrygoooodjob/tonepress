@@ -1,4 +1,4 @@
-window.TonepressCatalogStrings = Object.freeze({
+window.TonepressCatalogStrings = {
   // Effect titles. English matches the names in the catalog index.
   "原色网点": ["Halftone", "原色網点", "원색 망점"],
   "双色孔版": ["Riso", "2色リソグラフ", "2색 리소 인쇄"],
@@ -287,4 +287,4 @@ window.TonepressCatalogStrings = Object.freeze({
   "重复效果 ": ["Duplicate effect: ", "重複エフェクト: ", "중복 효과: "],
   "缺少效果 ": ["Missing effect: ", "未登録エフェクト: ", "누락된 효과: "],
   "效果清单数量不匹配": ["Effect catalog count does not match", "エフェクト一覧の件数が一致しません", "효과 목록 개수가 일치하지 않습니다"]
-});
+};

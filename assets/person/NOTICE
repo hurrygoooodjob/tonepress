@@ -1,0 +1,19 @@
+Third-party components for the Remove Background effect
+
+TensorFlow.js 4.22.0
+Copyright 2024 Google LLC. All Rights Reserved.
+Apache License, Version 2.0. See LICENSE in this directory.
+This directory carries the upstream npm browser distribution, without source changes.
+https://github.com/tensorflow/tfjs/releases/tag/tfjs-v4.22.0
+https://registry.npmjs.org/@tensorflow/tfjs/-/tfjs-4.22.0.tgz
+tf.min.js SHA-256: 300dfae273d20b4046f46a06d735688f03675a807561e9bcb5f664eb2f3d2831
+
+MediaPipe Selfie Segmentation (landscape), TensorFlow.js model release 1
+Model authors: Tingbo Hou, Siargy Pisarchyk, and Karthik Raveendran, Google.
+Apache License, Version 2.0. See LICENSE in this directory.
+The original computation graph and trained weights are preserved in model-data.js.
+The only changes are JSON serialization and embedding the binary shard as base64.
+https://tfhub.dev/mediapipe/tfjs-model/selfie_segmentation/landscape/1
+https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf
+Upstream model.json SHA-256: 590351190d04984282cda7f15eba08139920eb99569c2b7e4c8d41efc1c3d9e4
+Upstream group1-shard1of1.bin SHA-256: 2d23f96bc1be36a9a1d321d6141c0143fa7b4e949d786b257a31dbdc67e3e5d9

@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#e8eade">
 <script src="ui-i18n.js"></script>
 <script src="catalog-i18n.js"></script>
+<script src="mosh-motion-i18n.js"></script>
+<script src="mosh-space-i18n.js"></script>
+<script src="mosh-color-i18n.js"></script>
+<script src="mosh-layers-i18n.js"></script>
+<script src="mosh-person-i18n.js"></script>
 <script src="workspace-i18n.js"></script>
 <script src="locale.js"></script>
 <script src="screens.js"></script>
@@ -32,7 +37,7 @@
     <div class="cover-intro">
       <p class="cover-medium"><span class="cover-medium-line" aria-hidden="true"></span>照片 / 视频风格处理</p>
       <h1 id="cover-title"><span>影像</span><span>工作室<i aria-hidden="true">.</i></span></h1>
-      <p class="cover-description">从保留原色的细网点开始，在自己的素材上试试全部 65 种效果。</p>
+      <p class="cover-description">从保留原色的细网点开始，在自己的素材上试试全部效果。</p>
       <div class="cover-actions">
         <button id="enterStudio" type="button"><span>进入工作台</span><svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></button>
         <button id="coverImport" type="button"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg><span>直接导入</span></button>
@@ -159,6 +164,7 @@
             <h1 id="activeLayerName">原色轻网</h1>
             <span id="activeLayerEnglish" lang="en">Halftone</span>
           </div>
+          <div id="motionCue" class="motion-cue" hidden><span></span> <a id="motionExample" target="_blank" rel="noopener" hidden>用示例视频试用 ↗</a></div>
           <div class="setting strength-setting">
             <div class="setting-head"><label for="strength">效果强度</label><output for="strength"><b id="strengthValue">22</b><span>%</span></output></div>
             <input id="strength" class="track" type="range" min="0" max="100" step="1" value="22" style="--fill:22%">
@@ -198,12 +204,13 @@
     <section id="effectsDialog" class="trial-dock" aria-labelledby="effectsHeading">
       <div class="dock-tools">
         <div class="dock-heading">
-          <h2 id="effectsHeading">效果库 <span id="effectCount">65 / 65</span></h2>
+          <h2 id="effectsHeading">效果库 <span id="effectCount">—</span></h2>
           <div class="catalog-mode" aria-label="应用方式">
             <button id="modeSolo" type="button" aria-pressed="true" title="替换当前选中的效果层">替换</button><button id="modeAdd" type="button" aria-pressed="false" title="叠加一层效果">叠加</button>
           </div>
         </div>
         <div class="catalog-tools">
+          <button id="moshCollection" type="button" aria-pressed="false">Mosh-Pro</button>
           <label class="search-field"><svg class="ic"><use href="#i-search"/></svg><input id="findEffect" type="search" aria-label="搜索效果" placeholder="搜索效果"></label>
           <select id="effectCategory" aria-label="效果分类"><option value="">全部分类</option></select>
           <label class="new-filter"><input type="checkbox" id="onlyNew"><span>仅看新增</span></label>
@@ -251,8 +258,15 @@
 <script src="kit-print.js"></script>
 <script src="kit-optics.js"></script>
 <script src="kit-tracking.js"></script>
+<script src="kit-mosh-motion.js"></script>
+<script src="kit-mosh-space.js"></script>
+<script src="kit-mosh-color.js"></script>
+<script src="kit-mosh-layers.js"></script>
+<script src="person-loader.js"></script>
+<script src="kit-mosh-person.js"></script>
 <script src="effects.js"></script>
 <script src="looks.js"></script>
+<script src="mosh-collection.js"></script>
 <script src="controls.js"></script>
 <script src="workspace.js"></script>
 <script src="export.js"></script>

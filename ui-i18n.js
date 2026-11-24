@@ -2,7 +2,7 @@
 window.TonepressUIStrings = {
   "影像": ["Image", "画像", "이미지"],
   "工作室": ["Studio", "スタジオ", "스튜디오"],
-  "从保留原色的细网点开始，在自己的素材上试试全部 65 种效果。": ["Start with a fine, true-color halftone. Try all 65 effects on your own photos and video.", "原色を生かした繊細な網点から。自分の写真や動画で全65種類のエフェクトを試せます。", "원색을 살린 섬세한 망점부터 시작하세요. 내 사진과 영상에 65가지 효과를 적용해 볼 수 있습니다."],
+  "从保留原色的细网点开始，在自己的素材上试试全部效果。": ["Start with a fine, true-color halftone. Try the full effect library on your own photos and video.", "原色を生かした繊細な網点から。自分の写真や動画ですべてのエフェクトを試せます。", "원색을 살린 섬세한 망점부터 시작하세요. 내 사진과 영상에 모든 효과를 적용해 볼 수 있습니다."],
   "可旋转的三维显像管显示器": ["Rotatable 3D CRT monitor", "回転できる3Dブラウン管モニター", "회전 가능한 3D 브라운관 모니터"],
   "拖动旋转": ["Drag to rotate", "ドラッグで回転", "드래그하여 회전"],
   "向左旋转": ["Rotate left", "左に回転", "왼쪽으로 회전"],

@@ -404,6 +404,7 @@
     const scratch = [];
     const kits = TonepressKits.create(canvas);
     const halftoneRenderers = new Map();
+    const maskBuffers = [];
     let gpu;
     // Bound the character cache even as users explore different ramps in a long session.
     const atlases = new Map();
@@ -451,7 +452,7 @@
     }
 
     return {
-      render(source, { width, height, layers = [], motion, time, history } = {}) {
+      render(source, { width, height, layers = [], motion, time, history, audioBuffer } = {}) {
         if (disposed || !source || source.readyState !== undefined && source.readyState < 2) return false;
         const [sourceWidth, sourceHeight] = dimensions(source);
         if (!(sourceWidth > 0 && sourceHeight > 0)) return false;
@@ -464,6 +465,7 @@
           (layer.type === "halftone" || Object.hasOwn(kinds, layer.type) || extraKinds.has(layer.type) || TonepressKits.byType.has(layer.type)));
         kits.prepare(source,active,history);
         let current = source;
+        let maskUnderlay = null;
 
         for (let index = 0; index < active.length; index++) {
           const { type, size, strength, palette, chars } = active[index];
@@ -473,13 +475,21 @@
             paint(current, inputCanvas, width, height);
             current = inputCanvas;
           }
+          let nextUnderlay = null;
+          if (TonepressLooks.effects[active[index+1]?.type]?.mask) {
+            // The next mask reveals the input to this pass, also when masking another mask.
+            const slot = index % 2;
+            nextUnderlay = maskBuffers[slot] ??= newCanvas(canvas);
+            paint(current,nextUnderlay,width,height);
+          }
           const isLast = index === active.length - 1 && zoom === 1;
           const output = isLast && current !== canvas ? canvas : nextCanvas(current);
           apply(current, output, { type,
             palette: Object.hasOwn(palettes,palette) ? palette : "handheld",
             chars: glyphRamp(chars), size: clamp(finite(size, 6), 2, 16),
-            strength: clamp(finite(strength, 22), 0, 100), width, height, sourceWidth, sourceHeight, time, videoSource:typeof source.videoWidth==="number" }, active[index], index);
+            strength: clamp(finite(strength, 22), 0, 100), width, height, sourceWidth, sourceHeight, time, audioBuffer, originalSource:source, maskUnderlay:index ? maskUnderlay : null, videoSource:typeof source.videoWidth==="number" }, active[index], index);
           current = output;
+          maskUnderlay = nextUnderlay;
         }
 
         if (current === canvas && (zoom !== 1 || canvas.width !== width || canvas.height !== height)) {
@@ -496,6 +506,7 @@
       dispose() {
         if (disposed) return;
         kits.dispose();
+        for(const buffer of maskBuffers) if(buffer) resize(buffer,1,1);
         disposed = true;
         for (const renderer of halftoneRenderers.values()) renderer.dispose();
         halftoneRenderers.clear();

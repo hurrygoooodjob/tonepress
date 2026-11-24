@@ -588,3 +588,9 @@ html[data-view="studio"] body, html:not([data-view]) body:has(.shell:not([hidden
 @media (prefers-reduced-motion: reduce) {
   .shell *, #saveDialog * { transition: none !important; }
 }
+#moshCollection { color:var(--terminal-ink, #bbef92); white-space:nowrap; font:inherit; border:1px solid #587a43; background:#10170e; padding:4px 8px; border-radius:2px; }
+#moshCollection[aria-pressed=true] {color:#132209; background:#b4ed88; box-shadow:0 0 7px #8fb75c66;}
+.special-control.range-control input[type=range]{min-width:38px;width:100%;height:22px;padding:0;border:0;}
+.special-control.range-control output{min-width:3ch;text-align:right;font-variant-numeric:tabular-nums;}
+@media(max-width:860px){.catalog-tools{flex-wrap:wrap;} #moshCollection{min-height:28px;}}
+.motion-cue{margin:4px 0 8px;color:var(--terminal-phosphor,#bfec9d);font-size:12px;line-height:1.4;}

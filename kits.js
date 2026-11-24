@@ -20,6 +20,12 @@
       if (control.kind==="select" && control.options.some(o=>o.value===raw)) value=raw;
       if (control.kind==="text" && typeof raw==="string") value=raw.slice(0,control.maxLength || 40);
       if (control.kind==="bitmap" && typeof raw==="string" && /^[01]{64}$/.test(raw)) value=raw;
+      if (control.kind==="range" && typeof raw==="number" && Number.isFinite(raw)) {
+        const step=control.step || 1;
+        value=Math.max(control.min,Math.min(control.max,Number((control.min + step*Math.round((raw-control.min)/step)).toFixed(6))));
+      }
+      if (control.kind==="color" && typeof raw==="string" && /^#[0-9a-f]{6}$/i.test(raw)) value=raw;
+      if (control.kind==="image" && typeof raw==="string" && raw.length<=1500000 && /^data:image\/(?:png|webp|jpeg);base64,[a-z0-9+/]+=*$/i.test(raw)) value=raw;
       values[control.key]=value;
     }
     return values;
@@ -55,18 +61,35 @@
       }
       ctx.save();
       try {
-        pack.draw(input,art,{...parameters(def,layer),...settings,history});
+        pack.draw(input,art,{...settings,...parameters(def,layer),history});
       } finally {ctx.restore();}
       if(output.width!==width) output.width=width;
       if(output.height!==height) output.height=height;
       const result=output.getContext("2d");
       result.save();
       try {
+        if(def.mask && layer.showMatte==="show") {
+          result.globalCompositeOperation="copy"; result.drawImage(art,0,0); return;
+        }
+        if(def.mask) {
+          // The artwork is an opaque grayscale matte. Keep the pass where white, reveal its previous input where black.
+          // A first-pass mask reveals transparency. Premultiplied mixing preserves partially transparent edge pixels.
+          const top=input.getContext("2d").getImageData(0,0,width,height);
+          const matte=ctx.getImageData(0,0,width,height).data;
+          const under=settings.maskUnderlay?.getContext("2d").getImageData(0,0,width,height).data;
+          const a=top.data, amount=strength/100;
+          for(let i=0;i<a.length;i+=4){
+            const keep=1-amount+amount*matte[i]/255, above=keep*a[i+3], below=(1-keep)*(under?under[i+3]:0), alpha=above+below;
+            for(let j=0;j<3;j++) a[i+j]=alpha?(a[i+j]*above+(under?under[i+j]:0)*below)/alpha:0;
+            a[i+3]=alpha;
+          }
+          result.putImageData(top,0,0); return;
+        }
         result.resetTransform();
         result.globalCompositeOperation="copy";
         result.globalAlpha=1;
         result.drawImage(input,0,0,width,height);
-        result.globalCompositeOperation="source-atop";
+        result.globalCompositeOperation=def.overlay ? "source-over" : "source-atop";
         result.globalAlpha=strength/100;
         result.drawImage(art,0,0);
       } finally {result.restore();}

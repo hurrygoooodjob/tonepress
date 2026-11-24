@@ -18,7 +18,7 @@
   const normalizeSearch = value => value.normalize("NFKC").toLowerCase().replace(/[\s_-]+/g, " ").trim();
   const searchable = new Map(typeOrder.map(type => {
     const effect = effects[type];
-    const sources = [type, ...(searchAliases[type] || []), effect.name, effect.english, effect.group,
+    const sources = [type, ...(searchAliases[type] || []), TonepressMosh.names[type], effect.name, effect.english, effect.group,
       groupNames.get(effect.group), effect.scaleLabel, effect.description].filter(Boolean);
     const terms = sources.flatMap(source => [source, ...(window.TonepressCatalogStrings?.[source] || []),
       ...(window.TonepressWorkspaceStrings?.[source] || [])]);
@@ -66,7 +66,7 @@
     let custom = checkedLooks();
     const templates = () => [...looks, ...custom];
     const initial = templates().find(look => look.id === query.get("look")) || looks[0];
-    const single = query.get("effect");
+    const single = query.get("effect") || (query.has("mosh") ? "mosh-luma-mesh" : null);
     let committed = stateForLook(initial);
     if (single && Object.hasOwn(effects, single)) {
       committed = {layers: [layer(single)], motion: "none", templateId: null, selected: 0};
@@ -94,13 +94,16 @@
     const search = byId("findEffect");
     const category = byId("effectCategory");
     const onlyNew = byId("onlyNew");
+    const collectionButton=byId("moshCollection");
+    let moshOnly=query.has("mosh");
     const specialist = TonepressControls.create(byId("extraControls"), writeLayerParameter, feedback);
     const visibleTrial = () => transient || draft;
     const editing = () => draft?.state || committed;
     const focusedLayer = state => state.layers[state.selected];
     const pickedLook = state => templates().find(look => look.id === state.templateId);
     const settingsOf = state => ({layers: copyLayers(state.layers), motion: state.motion});
-    const displayName = proposal => proposal.kind === "template" ? lookNameOf(proposal.look) : t(effects[proposal.key].name);
+    const effectLabel = type => moshOnly && i18n.language==="en" && TonepressMosh.names[type] || t(effects[type].name);
+    const displayName = proposal => proposal.kind === "template" ? lookNameOf(proposal.look) : effectLabel(proposal.key);
 
     const sample = document.createElement("canvas");
     const tile = document.createElement("canvas");
@@ -158,6 +161,11 @@
     }
     const catalogObserver = thumbObserver(catalog);
     const railObserver = thumbObserver(rail);
+    document.addEventListener("tonepress:person-ready",()=>{
+      const canvas=catalog.querySelector('canvas[data-type="mosh-remove-background"]');
+      thumbnails.delete("effect:mosh-remove-background");
+      if(canvas){delete canvas.dataset.sampleRevision;watchThumbnails(catalog,catalogObserver);}
+    });
 
     function watchThumbnails(root, observer) {
       observer.disconnect();
@@ -212,7 +220,7 @@
       list.inert = busy || !!draft;
       byId("extraControls").inert = busy;
       for (const id of ["addEffect","lookLibrary","modeSolo","modeAdd","size","strength","reset","motion","palette",
-        "chars","findEffect","effectCategory","onlyNew"]) setDisabled(id, busy);
+        "chars","findEffect","effectCategory","onlyNew","moshCollection"]) setDisabled(id, busy);
       setDisabled("saveLook", busy || !!visibleTrial());
       setDisabled("applyTrial", busy || !draft);
       setDisabled("cancelTrial", busy || !visibleTrial());
@@ -235,7 +243,7 @@
       }
       byId("templateStatus").textContent = (look ? lookNameOf(look) : t("自定义组合")) + " · " + countLayers(committed.layers.length);
       byId("afterLabel").textContent = trial ? displayName(trial) : look ? lookNameOf(look)
-        : committed.layers.length === 1 ? t(effects[committed.layers[0].type].name)
+        : committed.layers.length === 1 ? effectLabel(committed.layers[0].type)
         : t(committed.layers.length ? "叠加效果" : "原片");
       byId("motion").value = state.motion;
       byId("emptyStack").hidden = Boolean(committed.layers.length);
@@ -247,7 +255,7 @@
       const english = byId("activeLayerEnglish");
       const group = byId("effectGroup");
       const layerName = state.templateId === "light" && current?.type === "halftone"
-        ? lookNameOf(pickedLook(state)) : t(definition?.name || "原片");
+        ? lookNameOf(pickedLook(state)) : current ? effectLabel(current.type) : t("原片");
       if (english) {
         english.textContent = definition?.english || "";
         english.hidden = !definition || i18n.language === "en" || layerName === definition.english;
@@ -439,7 +447,7 @@
     }
 
     function localizeLayerRow(row, item) {
-      const name = t(effects[item.type].name);
+      const name = effectLabel(item.type);
       const [, pick, toggle, earlier, later, remove] = row.children;
       pick.textContent = name;
       labelButton(pick, t("编辑{name}", {name}));
@@ -498,8 +506,10 @@
       } else {
         const definition = effects[card.dataset.effect];
         name.textContent = t(definition.name);
-        sub.textContent = definition.english;
-        sub.hidden = i18n.language === "en" || name.textContent === sub.textContent;
+        const official=moshOnly && TonepressMosh.names[card.dataset.effect];
+        if(official && i18n.language==="en") name.textContent=official;
+        sub.textContent=official || definition.english;
+        sub.hidden=name.textContent===sub.textContent;
         sub.lang = "en";
         labelButton(card, t("试样{name}", {name: name.textContent}));
         card.title = t(definition.description);
@@ -547,6 +557,12 @@
         card.addEventListener("focus", () => rovingTab(card));
         catalogCards.push(card);
       }
+      orderCatalog();
+    }
+    function orderCatalog() {
+      const keys=Object.keys(TonepressMosh.names);
+      const order=moshOnly ? new Map(keys.map((type,i)=>[type,i])) : new Map(typeOrder.map((type,i)=>[type,i]));
+      catalogCards.sort((a,b)=>(order.get(a.dataset.effect)??999)-(order.get(b.dataset.effect)??999));
       catalog.replaceChildren(...catalogCards);
     }
 
@@ -558,7 +574,8 @@
       const cards = catalogCards.filter(card => {
         const type = card.dataset.effect;
         const definition = effects[type];
-        const shown = (!group || definition.group === group) && (!onlyNew.checked || definition.isNew) &&
+        const groupMatch=!group || (moshOnly ? TonepressMosh.groups.find(item=>item[0]===group)?.[2].includes(type) : definition.group===group);
+        const shown = (!moshOnly || Object.hasOwn(TonepressMosh.names,type)) && groupMatch && (!onlyNew.checked || definition.isNew) &&
           searchable.get(type).includes(filter);
         card.hidden = !shown;
         return shown;
@@ -567,7 +584,7 @@
       catalog.scrollTop = 0;
       const focused = cards.includes(document.activeElement) ? document.activeElement : null;
       rovingTab(focused || cards.find(card => compareCard(draft, card)) || cards[0]);
-      byId("effectCount").textContent = cards.length + " / " + typeOrder.length;
+      byId("effectCount").textContent = cards.length + " / " + (moshOnly ? Object.keys(TonepressMosh.names).length : typeOrder.length);
       byId("emptyResults").hidden = cards.length > 0;
       watchThumbnails(catalog, catalogObserver);
       if (changed) update("endPeek");
@@ -644,15 +661,25 @@
       new ResizeObserver(controls).observe(strip);
     }
 
-    const categoryLabels = groups.map(([name,,types]) => {
+    let categoryLabels=[];
+    function rebuildCategories() {
+      while(category.options.length>1)category.remove(1);
+      categoryLabels=(moshOnly?TonepressMosh.groups:groups).map(([name,,types]) => {
       const option = new Option("", name);
       category.add(option);
       return {option, name, count: types.length};
-    });
+      });
+      localizeCategories();
+    }
     function localizeCategories() {
       for (const {option, name, count} of categoryLabels) option.textContent = t(name) + " · " + count;
     }
-    localizeCategories();
+    rebuildCategories();
+    collectionButton.setAttribute("aria-pressed",String(moshOnly));
+    collectionButton.onclick=()=>{
+      moshOnly=!moshOnly; rebuildCategories(); catalogCards.forEach(card=>localizeCard(card)); orderCatalog(); collectionButton.setAttribute("aria-pressed",String(moshOnly));
+      showGallery(true,true);
+    };
     if (query.get("library") === "new") onlyNew.checked = true;
     for (const input of [search, category, onlyNew]) {
       input.addEventListener(input === search ? "input" : "change", () => filterCatalog());
@@ -835,7 +862,7 @@
     drawLayers();
     makeCatalog();
     filterCatalog();
-    showGallery(query.has("library"));
+    showGallery(query.has("library") || moshOnly);
     document.addEventListener("tonepress:language", () => {
       for (const card of catalogCards) localizeCard(card);
       const looksById = new Map(templates().map(look => [look.id, look]));
