@@ -262,21 +262,158 @@
 
   const chromaAt=(data,i)=>Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2]);
 
-  function trailHighlights(base,frame,lumas,previous,block,vx,vy,flow,amount,energy) {
+  function foldHighlightGroups(out,base,frame,lumas,previous,bands,options) {
+    const {block,index,horizontal,velocity,flow,amount,energy,track,field,length,breadth}=options;
+    const entry=clamp((energy-.98-amount*.29)*3.15,0,1);
+    const pulse=entry*(1-clamp((energy-1.48)*2.72,0,1))*flow;
+    if(pulse<.065) return;
+    const sign=Math.sign(velocity);
+    const bendField={...field,xFlow:track.bendX,yFlow:track.bendY};
+    const normalAt=(u,n)=>{
+      const [x,y]=horizontal?[u,n]:[n,u];
+      const [bx,by]=vectorAt(bendField,x,y);
+      return (horizontal?by:bx);
+    };
+    const selected=[];
+    for(const head of bands) {
+      const nearby=bands.find(other=>{
+        const d=Math.abs(other.lane-head.lane);
+        return d>block*.32 && d<block*.99 &&
+          Math.min(head.last,other.last)-Math.max(head.start,other.start)>=Math.min(head.span,other.span)*.73;
+      });
+      if(!nearby || selected.some(rect=>Math.abs(rect.lane-head.lane)<block*1.61 &&
+        Math.min(rect.last,head.last)-Math.max(rect.start,head.start)>block)) continue;
+      const left=Math.max(head.start,nearby.start),right=Math.min(head.last,nearby.last);
+      if(right-left<block*1.74) continue;
+
+      // Correlate the bend over neighboring prediction cells. One fault takes an entire group
+      // of edges with it instead of reproducing a series of independently translated scan lines.
+      let hinge=null;
+      const cross=(head.lane+nearby.lane)/2;
+      for(let u=left+block*.28;u<=right-block*.27;u+=block*.40){
+        const center=normalAt(u,cross);
+        const before=normalAt(u-block*.68,cross);
+        const after=normalAt(u+block*.68,cross);
+        const shear=after-before;
+        let rise=0,dark=0,points=0;
+        for(const offset of [-.57,0,.57]) for(const crossOffset of [-.29,0,.29]){
+          const x=limit(Math.round(u+offset*block),length-1);
+          const n=limit(Math.round(cross+crossOffset*block),breadth-1);
+          const at=index(x,n);
+          const original=lumas[at];
+          const predicted=luma(base,4*at);
+          rise+=Math.max(0,predicted-original-12);
+          dark+=original<104?1:0;
+          points++;
+        }
+        const shape=(Math.abs(before)+Math.abs(center)+Math.abs(after)+2.3*Math.abs(shear))/block;
+        const support=clamp(rise/(points*72),0,1)*dark/points;
+        const score=shape*.98+support*.58;
+        if(!hinge || score>hinge.score) hinge={u,before,center,after,shear,score};
+      }
+      if(!hinge || hinge.score<.22) continue;
+      const force=clamp((hinge.score-.17)*1.72,0,1);
+      const half=block*(.74+force*1.18);
+      const pivot=clamp(hinge.u+sign*block*.27,left,right);
+      const first=limit(Math.floor(pivot-half),length-1),last=limit(Math.ceil(pivot+half),length-1);
+      selected.push({lane:head.lane,start:first,last});
+      const neighborLane=nearby.lane,donorLane=head.lane;
+      const order=clamp(.50+(hinge.center+.30*hinge.shear)/(block*.44),.17,.83);
+      const target=mix(donorLane,neighborLane,order);
+      const envelope=block*(.26+force*.33);
+      const apron=block*.39;
+      const step=clamp(hinge.shear*.9,-block*.7,block*.7);
+      const span=Math.ceil(envelope+apron+Math.abs(step)+2);
+      const {data}=frame;
+      for(let u=first;u<=last;u++) {
+        const progress=clamp((u-(pivot-half))/(2*half),0,1);
+        const rim=clamp(Math.min(progress,1-progress)*7,0,1);
+        const warp=mix(hinge.before,hinge.after,progress)-hinge.center;
+        const center=target+warp*.80+step*(progress<.46?-.23:.32);
+        const width=envelope*(.70+.30*Math.sin(progress*Math.PI));
+        const donorAlong=limit(Math.round(clamp(u-sign*half*.23,left,right)),length-1);
+        const j=index(donorAlong,donorLane)*4;
+        if(chromaAt(data,j)>82 || data[j+3]<48) continue;
+        const donor=luma(data,j);
+        for(let n=Math.max(0,Math.floor(target)-span);n<=Math.min(breadth-1,Math.ceil(target)+span);n++){
+          const distance=Math.abs(n-center);
+          if(distance>width+apron) continue;
+          const i=index(u,n)*4;
+          const neutrality=clamp((72-chromaAt(base,i))/20,0,1);
+          if(base[i+3]<48 || neutrality===0 || chromaAt(data,i)>85) continue;
+          const current=luma(out,i);
+          const face=clamp((width-distance+.68)/1.35,0,1);
+          const rimOpacity=clamp((width+apron-distance)/apron,0,1);
+          const bank=index(donorAlong,limit(Math.round(donorLane+Math.sign(n-center)*3),breadth-1));
+          const shade=Math.min(current,lumas[bank]+15);
+          const peak=luma(base,index(u,limit(Math.round(center),breadth-1))*4);
+          const highlight=Math.min(208,Math.max(124,peak)+.42*Math.max(0,donor-peak)+Math.abs(warp)*1.4);
+          const opacity=rim*pulse*force*neutrality*rimOpacity*(1.11+amount*.58)*data[j+3]/255;
+          let correction=(mix(shade,highlight,face)-current)*clamp(opacity,0,.82);
+
+          // A flat, pale prediction can cover a still-dark space between two input edges.
+          // Keep the folded face and lower this even spill according to its local variance.
+          const raw=Math.max(lumas[i/4],previous[i/4]);
+          if(face<.60 && raw<98 && current-raw>20) {
+            let mean=0,squares=0;
+            for(let d=-2;d<=2;d++){
+              const at=limit(u+d*Math.max(1,Math.round(block*.21)),length-1);
+              const value=luma(base,index(at,n)*4);
+              mean+=value;squares+=value*value;
+            }
+            mean/=5;
+            const deviation=Math.sqrt(Math.max(0,squares/5-mean*mean));
+            const flat=1-clamp((deviation-9)/30,0,1);
+            const spill=Math.max(0,Math.min(mean,current)-raw-14);
+            correction-=spill*flat*(1-face)*pulse*neutrality*rim*rimOpacity*1.02;
+          }
+          for(let c=0;c<3;c++) out[i+c]+=correction;
+        }
+      }
+    }
+  }
+
+  function trailHighlights(base,frame,lumas,previous,block,vx,vy,flow,amount,energy,track,field) {
     const {w,h,data}=frame;
     const horizontal=Math.abs(vx)>=Math.abs(vy);
     const velocity=horizontal?vx:vy;
     const speed=Math.abs(velocity);
     const visibility=clamp((energy-1.46-amount*.42)*2.2,0,1);
-    if(speed<.35 || flow===0 || visibility<.075) return null;
+    if(speed<.35 || flow===0 || energy<1.015+amount*.29) return null;
     const sign=Math.sign(velocity);
     const length=horizontal?w:h, breadth=horizontal?h:w;
     if(breadth<8) return null;
-    const reach=clamp((energy-1.83-amount*.22)*2.45,0,1);
+    const reachStart=1.83+amount*.22;
+    const reach=clamp((energy-reachStart)*2.45,0,1);
+    const tension=reach*reach*(3-2*reach);
+    const sustained=clamp((energy-reachStart-.35)*2.05,0,.77);
     const minimum=Math.max(9,Math.round(block*1.52));
     const index=(along,normal)=>horizontal?normal*w+along:along*w+normal;
     const jump=horizontal?w:1;
     const bands=[];
+
+    // Prediction residuals around the anchored end distinguish a held patch from a repeated fine line.
+    function endpointEvidence(lane,end) {
+      const radius=Math.round(block*.57);
+      let mass=0,moment=0,spread=0;
+      for(let n=-radius;n<=radius;n++){
+        const normal=lane+n;
+        if(normal<3 || normal>=breadth-3) continue;
+        for(let d=-.22;d<=.97;d+=.23){
+          const along=limit(Math.round(end+sign*block*d),length-1);
+          const at=index(along,normal),i=at*4;
+          if(chromaAt(base,i)>69 || base[i+3]<90) continue;
+          const retained=luma(base,i);
+          const innovation=Math.max(0,retained-lumas[at]-16);
+          const proximity=1-Math.abs(n)/(radius+1)*.58;
+          const weight=innovation*clamp((retained-66)/70,0,1)*proximity;
+          mass+=weight;moment+=n*weight;spread+=n*n*weight;
+        }
+      }
+      const crest=mass>1?moment/mass:0;
+      const footprint=mass>1?Math.sqrt(Math.max(0,spread/mass-crest*crest)):0;
+      return {strength:mass/(12*radius+6),crest,breadth:footprint};
+    }
 
     // Pick separated, high-contrast bands rather than extending every fine edge in a texture.
     for(let lane=3;lane<breadth-3;lane++){
@@ -301,9 +438,10 @@
             const midpoint=Math.round((start+last)/2),i=index(midpoint,lane)*4;
             const stableContrast=contrast/count;
             const currentContrast=luma(base,i)-Math.min(luma(base,i-jump*12),luma(base,i+jump*12));
-            const rank=stableContrast*.58+brightness/count*.2+Math.min(span,block*5)*.26+
-              Math.max(0,currentContrast)*.085+probability(lane,Math.floor(midpoint/block),81)*5;
-            bands.push({lane,start,last,span,rank,contrast:stableContrast});
+            const endpoint=endpointEvidence(lane,sign>0?last:start);
+            const rank=stableContrast*.53+brightness/count*.18+Math.min(span,block*5)*.24+
+              Math.max(0,currentContrast)*.06+endpoint.strength*.66+probability(lane,Math.floor(midpoint/block),81)*2;
+            bands.push({lane,start,last,span,rank,contrast:stableContrast,endpoint});
           }
           start=-1;last=-1;holes=0;contrast=0;brightness=0;count=0;
         }
@@ -315,28 +453,77 @@
     const accepted=[];
     const separation=Math.max(7,block*(1.48+amount*.27));
     const out=new Uint8ClampedArray(base);
+
+    if(visibility<.075){
+      foldHighlightGroups(out,base,frame,lumas,previous,bands,{block,index,horizontal,velocity,flow,amount,energy,track,field,length,breadth});
+      return out;
+    }
+
+    // The spill around a bright strip is a prediction error when dark texture is still visible
+    // in consecutive input frames. Remove that low-contrast wash before transporting the strip.
+    const wash=new Uint8Array(w*h);
+    const washStrength=clamp((energy-1.48-amount*.38)*4.5,0,1)*(.56+flow*.33);
+    const fringe=Math.round(block*.49);
+    for(const {lane,start,last,span,contrast} of bands) {
+      if(contrast<55 || span<block*1.65) continue;
+      const margin=Math.round(block*.24);
+      for(let normal=Math.max(0,lane-fringe);normal<=Math.min(breadth-1,lane+fringe);normal++) {
+        const sides=clamp((fringe+1-Math.abs(normal-lane))/Math.max(2,fringe*.42),0,1);
+        for(let u=start;u<=last;u++) {
+          const i=index(u,normal);
+          if(lumas[i]>89 || previous[i]>99 || Math.abs(lumas[i]-previous[i])>=26) continue;
+          const ends=clamp(Math.min(u-start+1,last-u+1)/margin,0,1);
+          wash[i]=Math.max(wash[i],Math.round(255*sides*ends*washStrength));
+        }
+      }
+    }
+    for(let i=0;i<wash.length;i++) {
+      if(!wash[i]) continue;
+      const j=4*i,neutrality=clamp((72-chromaAt(base,j))/20,0,1);
+      if(base[j+3]<48 || neutrality===0 || chromaAt(data,j)>85) continue;
+      const retained=luma(base,j),floor=Math.max(lumas[i],previous[i]);
+      const correction=Math.max(0,retained-floor-13)*neutrality*wash[i]/255;
+      for(let k=0;k<3;k++) out[j+k]-=correction;
+    }
+
+    foldHighlightGroups(out,base,frame,lumas,previous,bands,{block,index,horizontal,velocity,flow,amount,energy,track,field,length,breadth});
+
     for(const band of bands){
-      const {lane,start,last,span,contrast}=band;
+      const {lane,start,last,span,contrast,endpoint}=band;
       if(accepted.some(other=>Math.abs(other.lane-lane)<separation &&
         Math.min(last,other.last)-Math.max(start,other.start)>Math.min(span,other.span)*.41)) continue;
       accepted.push(band);
       const shape=probability(lane,Math.floor((start+last)/(4*block)),34);
       const extra=block*clamp(speed,.65,1.8)*(.85+flow*.74);
-      const lengthToPaint=span*(.51+.45*reach)+extra*(.16+.99*reach)*(.69+shape*.45);
-      const overhang=block*(.22+reach*.60);
+      const hold=clamp(endpoint.strength/24,0,1);
+      const reserve=block*sustained*clamp((span/block-2.2)*.65,0,1);
+      const pull=block*.16*clamp((tension-.50)*2,0,1);
+      const lengthToPaint=span*(.53+.455*tension)+extra*(.20+.89*tension)*(.77+shape*.29+hold*.16)+
+        reserve*1.17+pull;
+      // The held end gathers confidence more slowly than the moving edge.
+      const heldReach=Math.min(reach,tension);
+      const heldReserve=reserve*(.61+.28*clamp((sustained-.27)*2.5,0,1));
+      const overhang=block*(.39+heldReach*1.43+hold*.54)+heldReserve;
       const pin=sign>0?last+overhang:start-overhang;
       const tip=pin-sign*lengthToPaint;
       const from=limit(Math.floor(Math.min(tip,pin)),length-1),to=limit(Math.ceil(Math.max(tip,pin)),length-1);
-      const depth=1+block*(.044+flow*.039)*(1+visibility*.46)+shape*.53;
-      for(let normal=Math.max(0,lane-Math.ceil(depth)-2);normal<=Math.min(breadth-1,lane+Math.ceil(depth)+2);normal++){
+      const expansion=clamp((endpoint.breadth-block*.115)*1.21,0,block*.26)*hold;
+      const depth=1+block*(.045+flow*.038)*(1+visibility*.39)+shape*.35+expansion*(.75+reach*.41);
+      const shoulder=block*.34;
+      const crest=-endpoint.crest*.62*clamp(endpoint.strength/12,0,1);
+      const spread=Math.ceil(depth+shoulder+Math.abs(crest));
+      for(let normal=Math.max(0,lane-spread);normal<=Math.min(breadth-1,lane+spread);normal++){
         const offset=normal-lane;
         for(let u=from;u<=to;u++){
           const progress=clamp((pin-u)*sign/lengthToPaint,0,1);
           const swell=Math.sin(progress*Math.PI);
-          const bend=(shape-.5)*swell*2.1+Math.sin(progress*5+shape*4.3)*swell*.62;
-          const thickness=depth*(.72+.28*swell)+(shape-.5)*progress;
-          const ink=Math.abs(offset-bend)<=thickness;
-          const rawLane=ink?lane:limit(lane+Math.sign(offset)*Math.min(3,Math.round(depth)+1),breadth-1);
+          const bend=crest*(.55+.45*(1-progress))+(shape-.5)*swell*1.7+
+            Math.sin(progress*5+shape*4.3)*swell*.6;
+          const thickness=depth*(.81+.19*swell)+(shape-.5)*progress;
+          const distance=Math.abs(offset-bend);
+          if(distance>thickness+shoulder) continue;
+          const ink=distance<=thickness;
+          const rawLane=ink?lane:limit(lane+Math.sign(offset-bend)*Math.min(3,Math.round(depth)+1),breadth-1);
           const i=index(u,normal)*4;
           const neutrality=clamp((72-chromaAt(base,i))/20,0,1);
           if(base[i+3]<48 || neutrality===0 || chromaAt(data,i)>85) continue;
@@ -344,12 +531,15 @@
           const j=index(limit(Math.round(sample),length-1),rawLane)*4;
           if(chromaAt(data,j)>82 || data[j+3]<48) continue;
           const fade=Math.min(clamp((progress+.02)*16,0,1),clamp((1.025-progress)*12,0,1));
-          const weight=visibility*neutrality*fade*(ink?.86:.60)*data[j+3]/255;
+          const flankBlend=clamp(1-(distance-thickness)/shoulder,0,1);
+          const weight=visibility*neutrality*fade*(ink?.84:.78*flankBlend)*data[j+3]/255;
           if(weight<.025) continue;
-          const donor=luma(data,j),current=luma(base,i);
-          const signal=ink?Math.min(197,donor-(1-clamp((contrast-36)/108,0,1))*14):Math.min(current,donor);
+          const donor=luma(data,j),current=luma(out,i);
+          const signal=ink?Math.min(181+hold*(14+reach*8),donor-(1-clamp((contrast-36)/108,0,1))*16):Math.min(current,donor);
+          if(!ink && normal>0 && normal+1<breadth &&
+            lumas[i/4]>Math.min(lumas[i/4-jump],lumas[i/4+jump])+19) continue;
           const brightnessChange=(signal-current)*weight;
-          for(let k=0;k<3;k++)out[i+k]=base[i+k]+brightnessChange;
+          for(let k=0;k<3;k++)out[i+k]+=brightnessChange;
         }
       }
     }
@@ -360,7 +550,7 @@
       const {lane,start,last,span}=band;
       const overlaps=(other,distance)=>Math.abs(other.lane-lane)<distance &&
         Math.min(last,other.last)-Math.max(start,other.start)>Math.min(span,other.span)*.5;
-      if(accepted.some(other=>overlaps(other,6)) || repaired.some(other=>overlaps(other,7))) continue;
+      if(accepted.some(other=>overlaps(other,5)) || repaired.some(other=>overlaps(other,7))) continue;
       const gaps=[];
       let opening=-1,support=0;
       for(let u=start;u<=last+1;u++){
@@ -370,7 +560,7 @@
         const original=lumas[i/4]-(lumas[i/4-jump*3]+lumas[i/4+jump*3])*.5;
         const retained=u<=last && peak-floor>=Math.max(27,original*.49);
         if(retained){
-          if(support>0 && opening>=start && u-opening<=block*.97) gaps.push([opening,u]);
+          if(support>0 && opening>=start && u-opening<=block*1.06) gaps.push([opening,u]);
           support++;
           opening=-1;
         }else if(opening<0) opening=u;
@@ -383,7 +573,7 @@
           const neutrality=clamp((72-chromaAt(base,i))/20,0,1);
           if(base[i+3]<48 || neutrality===0 || chromaAt(data,i)>85) continue;
           const current=luma(out,i),donor=luma(data,j);
-          const gain=Math.max(0,donor-current)*visibility*neutrality*(offset===0?.67:.28);
+          const gain=Math.max(0,donor-current)*visibility*neutrality*(offset===0?.69:.29);
           for(let c=0;c<3;c++) out[i+c]+=gain;
         }
       }
@@ -588,7 +778,7 @@
       }
     }
     // The transported highlights remain separate from the color prediction fed into later frames.
-    track.display=trailHighlights(result,frame,hist.lum,hist.prevLum,block,cameraX,cameraY,flow,amount,track.energy);
+    track.display=trailHighlights(result,frame,hist.lum,hist.prevLum,block,cameraX,cameraY,flow,amount,track.energy,track,field);
     return result;
   }
 

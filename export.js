@@ -61,7 +61,8 @@
     canvas.height = height;
 
     const renderer = TonepressStack.create(canvas);
-    const time = Number.isFinite(source.currentTime) ? source.currentTime : settings.time || 0;
+    const time = TonepressStack.usesDecodedClock(settings) && Number.isFinite(settings.time)
+      ? settings.time : (Number.isFinite(source.currentTime) ? source.currentTime : settings.time || 0);
     try {
       if (renderer.render(source, { ...settings, width, height, time }) === false) {
         throw new Error("无法渲染当前画面。");
@@ -229,11 +230,13 @@
     throw new Error("当前设备没有可用的视频编码器。可尝试更换浏览器或缩小素材。", { cause: error });
   }
 
-  function recordFrames(recorder, video, duration, draw, onProgress, signal) {
+  function recordFrames(recorder, video, duration, draw, onProgress, signal, useDecodedClock) {
     return new Promise((resolve, reject) => {
       const chunks = [];
       const framePeriod = 1000 / VIDEO_FPS;
       let frameId;
+      let videoFrameId;
+      let lastMediaTime = 0;
       let startTime;
       let nextDraw;
       let finishing = false;
@@ -241,6 +244,7 @@
       function removeListeners() {
         clearTimeout(timer);
         cancelAnimationFrame(frameId);
+        if (videoFrameId != null) video.cancelVideoFrameCallback(videoFrameId);
         recorder.removeEventListener("dataavailable", onData);
         recorder.removeEventListener("stop", onStop);
         recorder.removeEventListener("error", onRecorderError);
@@ -307,11 +311,26 @@
         }
       }
 
+      // A decoded picture advances prediction once, regardless of display or recorder frame rate.
+      function presented(_now, frame) {
+        videoFrameId = video.requestVideoFrameCallback(presented);
+        try {
+          if (frame.mediaTime === lastMediaTime) return;
+          draw(frame.mediaTime);
+          lastMediaTime = frame.mediaTime;
+          onProgress?.(Math.min(.99, lastMediaTime / duration));
+        } catch (error) {
+          fail(error);
+        }
+      }
+
       function onEnded() {
         finishing = true;
         cancelAnimationFrame(frameId);
+        if (videoFrameId != null) video.cancelVideoFrameCallback(videoFrameId);
         try {
-          const time = video ? Math.min(video.currentTime, duration) : duration - 1 / VIDEO_FPS;
+          const time = useDecodedClock ? lastMediaTime :
+            video ? Math.min(video.currentTime, duration) : duration - 1 / VIDEO_FPS;
           draw(time, true);
           // Let the final filtered frame reach the capture stream before stopping.
           frameId = requestAnimationFrame(() => {
@@ -340,7 +359,8 @@
         draw(0, true);
         startTime = performance.now();
         nextDraw = startTime + framePeriod;
-        frameId = requestAnimationFrame(update);
+        if (useDecodedClock) videoFrameId = video.requestVideoFrameCallback(presented);
+        else frameId = requestAnimationFrame(update);
         onProgress?.(0);
         if (video && !signal?.aborted) {
           video.play().catch((error) => fail(new Error("浏览器未能开始播放导出源。请直接点击导出后重试。", { cause: error })));
@@ -380,7 +400,8 @@
       };
 
       recorder = startRecorder(new MediaStream([videoTrack, ...audioTracks]), width, height);
-      const result = await recordFrames(recorder, video, duration, draw, onProgress, signal);
+      const useDecodedClock = video?.requestVideoFrameCallback && TonepressStack.usesDecodedClock(settings);
+      const result = await recordFrames(recorder, video, duration, draw, onProgress, signal, useDecodedClock);
       if (signal?.aborted) throw abortError();
       onProgress?.(1);
       return result;

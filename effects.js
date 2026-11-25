@@ -470,7 +470,10 @@
 
         for (let index = 0; index < active.length; index++) {
           const { type, size, strength, palette, chars } = active[index];
-          if ((active[index].profile==="mosh" || extraKinds.has(type) || TonepressKits.byType.has(type)) && (typeof current.getContext !== "function" || current.width !== width ||
+          // A smaller preview must estimate motion from the same decoded detail as an export.
+          const sampleVideoDirectly = index === 0 && type === "mosh-data-mosh" && source.videoWidth > 0 &&
+            (width !== sourceWidth || height !== sourceHeight);
+          if (!sampleVideoDirectly && (active[index].profile==="mosh" || extraKinds.has(type) || TonepressKits.byType.has(type)) && (typeof current.getContext !== "function" || current.width !== width ||
               current.height !== height)) {
             const inputCanvas = nextCanvas(current);
             paint(current, inputCanvas, width, height);
@@ -520,5 +523,10 @@
     };
   }
 
-  window.TonepressStack = { create };
+  // Predictive history follows decoded pictures, even if the display refreshes more often.
+  function usesDecodedClock(settings) {
+    return settings.layers?.some(layer => layer.type === "mosh-data-mosh" &&
+      layer.enabled !== false && layer.strength > 0);
+  }
+  window.TonepressStack = { create, usesDecodedClock };
 })();

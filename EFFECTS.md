@@ -4,7 +4,7 @@
 
 The collection matches 74 public effect names to 74 selectable Tonepress implementations. Eight use filters from the original library. The other 66 extend it to 131 unique effects. Open a row to try it on the built-in media.
 
-[Watch the synchronized Data Mosh exit in v13, v12, v11 and v10](https://hurrygoooodjob.github.io/tonepress/compare/?loop=exit#mosh-data-mosh) · [All 74 on the same photo and video](https://hurrygoooodjob.github.io/tonepress/compare/catalog/)
+[Watch the synchronized Data Mosh exit in v14, v13, v12, v11 and v10](https://hurrygoooodjob.github.io/tonepress/compare/?loop=exit#mosh-data-mosh) · [All 74 on the same photo and video](https://hurrygoooodjob.github.io/tonepress/compare/catalog/)
 
 ## Differences that affect the result
 

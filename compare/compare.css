@@ -55,9 +55,9 @@ h1 { font-size: clamp(25px, 3.4vw, 48px); line-height: 1.12; letter-spacing: -.0
 h2 { font-size: clamp(25px, 3.1vw, 43px); line-height: 1.13; letter-spacing: -.03em; }
 h3 { font-size: 1rem; }
 .media-tabs, .player-controls, .frame-controls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
-.media-tabs { flex: none; align-self: end; }
+.media-tabs { flex: 0 1 auto; min-width: 0; max-width: 100%; align-self: end; justify-content: flex-end; }
 .media-tabs select { background: #fff; border: 1px solid #9bb0a6; border-radius: 3px; padding: 4px 7px; }
-.media-tabs label { font-size: .84rem; color: var(--quiet); }
+.media-tabs label { font-size: .84rem; color: var(--quiet); white-space: nowrap; }
 .online-notes { color: var(--quiet); font-size: .86rem; margin: 0 0 11px; }
 .media-tabs button, .frame-controls button, .player-controls button { padding: 5px 10px; background: #fff; border: 1px solid #9bb0a6; border-radius: 3px; }
 .media-tabs button[aria-pressed="true"], .frame-controls button[aria-pressed="true"], .player-controls button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -101,6 +101,7 @@ footer p+p { margin-top: 3px; }
 @media(max-width:485px) {
   .effects { grid-template-columns: 1fr; max-height: 126px; }
   .effect-header { flex-wrap: wrap; }
+  .media-tabs { justify-content: flex-start; }
   .player-controls input { flex-basis: 45%; }
   .sides { grid-template-columns: 1fr; }
   .frame { aspect-ratio: 16/10; }

@@ -22,6 +22,7 @@
   let audition = null;
   let returnHistory = null;
   let thumbnailTime = null;
+  const presentedTimes = new WeakMap();
   let committedKey = '';
   const editor = TonepressWorkspace.create(onLookChanged, message);
   const originalPainter = TonepressRenderer.create(ui.original);
@@ -76,6 +77,10 @@
   const PHOTO_DURATION = 4;
   function currentTime() {
     return state.kind === 'video' ? state.source.currentTime : state.photoTime;
+  }
+  function effectTime(recipe) {
+    return (state.kind === 'video' && TonepressStack.usesDecodedClock(recipe)
+      ? presentedTimes.get(state.source) : null) ?? currentTime();
   }
   function visibleTimed() {
     if (!editor.previewing) return editor.timed;
@@ -273,7 +278,7 @@
     const width = Math.max(1, Math.round(state.width * scale)), height = Math.max(1, Math.round(state.height * scale));
     originalPainter.render(state.source, {strength: 0, width, height});
     const recipe=editor.previewing ? editor.previewSettings : editor.settings;
-    const settings = {time:currentTime(), width, height};
+    const settings = {time:effectTime(recipe), width, height};
     if (state.kind==='video' && recipe.layers.some(layer=>layer.enabled && layer.type==='mosh-audio-visualizer')) {
       settings.audioBuffer=TonepressLayerAudio.peek(state.file,schedule);
     }
@@ -286,12 +291,12 @@
     }
     drawSignal();
   }
+  function drawPreview() {
+    state.renderRequest = 0;
+    try { render(); } catch (error) { message('预览暂时无法绘制。{reason}', true, {reason: error.message}); }
+  }
   function schedule() {
-    if (state.renderRequest) return;
-    state.renderRequest = requestAnimationFrame(() => {
-      state.renderRequest = 0;
-      try { render(); } catch (error) { message('预览暂时无法绘制。{reason}', true, {reason: error.message}); }
-    });
+    if (!state.renderRequest) state.renderRequest = requestAnimationFrame(drawPreview);
   }
   function stopFrames() {
     const v = state.frameSource;
@@ -306,10 +311,17 @@
     stopFrames();
     if (v !== state.source || v.paused || v.ended) return;
     state.frameSource = v;
-    const next = () => {
+    const next = (_now, frame) => {
       state.frameRequest = 0;
       if (v !== state.source) return;
-      schedule(); updateTimeline(); animate(v);
+      animate(v);
+      if (frame && !v.seeking) presentedTimes.set(v,frame.mediaTime);
+      const recipe = editor.previewing ? editor.previewSettings : editor.settings;
+      if (frame && TonepressStack.usesDecodedClock(recipe)) {
+        if (state.renderRequest) cancelAnimationFrame(state.renderRequest);
+        drawPreview();
+      } else schedule();
+      updateTimeline();
     };
     state.frameRequest = v.requestVideoFrameCallback ? v.requestVideoFrameCallback(next) : requestAnimationFrame(next);
   }
@@ -385,6 +397,7 @@
   function bindVideo(source) {
     source.loop=state.repeat;
     source.addEventListener('seeking', () => {
+      presentedTimes.delete(source);
       if (state.source !== source) return;
       if (audition) trialPainter?.resetHistory();
       else if (!returnHistory) painter.resetHistory();
@@ -507,7 +520,7 @@
     try {
       if (state.kind === 'video' && mode === 'frame') await waitForSeek(state.source);
       if (mode==="frame") render();
-      const settings={...editor.settings,time:currentTime()};
+      const settings={...editor.settings,time:effectTime(editor.settings)};
       if (state.kind==='video' && settings.layers.some(layer=>layer.enabled && layer.type==='mosh-audio-visualizer')) {
         settings.audioBuffer=await TonepressLayerAudio.load(state.file);
       }

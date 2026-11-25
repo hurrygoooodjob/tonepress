@@ -61,7 +61,9 @@
   let tab='video';
   let frameTime=null;
   let player=null;
-  let requestedLoop=online?new URLSearchParams(location.search).get('loop'):null;
+  const entryParams=new URLSearchParams(location.search);
+  let requestedLoop=online?entryParams.get('loop'):null;
+  let requestedPillar=online&&entryParams.get('view')==='pillar';
   const chosenVersions=new Map();
 
   function node(tag, text, className) {
@@ -127,9 +129,11 @@
   function select(row,fromList=false) {
     const previous=current?.id===row.id?player?.state():null;
     current=versionRow(row);
-    const entry=current.loops&&Object.hasOwn(current.loops,requestedLoop)?
+    let entry=current.loops&&Object.hasOwn(current.loops,requestedLoop)?
       {position:current.loops[requestedLoop].start,loopRange:requestedLoop,looping:true}:null;
+    if(requestedPillar&&current.detailRegion) entry={...entry,detail:true};
     requestedLoop=null;
+    requestedPillar=false;
     resetFrame();
     renderList();
     render(previous??entry);
@@ -183,25 +187,58 @@
     image.alt=alt;
     return image;
   }
-  function fitPicture(heading,frame,player,media,full) {
-    const [x,y,w,h]=media.viewport;
-    const toggle=button('',()=>set(!zoom));
-    toggle.className='preview-toggle';
-    let zoom=true;
-    function set(enabled) {
-      zoom=enabled;
-      toggle.setAttribute('aria-pressed',String(!zoom));
-      toggle.textContent=zoom?l('查看完整界面','Show full interface'):l('放大工作画面','Show picture area');
+  function fitPicture(picture,region,full=false) {
+    const {frame,player,media}=picture;
+    const [vx,vy,vw,vh]=media.viewport||[0,0,media.width,media.height];
+    // Both windows use the same source-pixel coordinates; visitor capture adds the interface offset.
+    if(region) {
+      const sx=vw/source.video.width,sy=vh/source.video.height;
+      const [x,y,w,h]=region;
+      place(vx+x*sx,vy+y*sy,w*sx,h*sy);
       frame.style.aspectRatio=`${w} / ${h}`;
-      if(zoom) Object.assign(player.style,{position:'absolute',left:`${-100*x/w}%`,top:`${-100*y/h}%`,
-        width:`${100*media.width/w}%`,height:`${100*media.height/h}%`,objectFit:'fill'});
+    } else {
+      if(media.viewport&&!full) place(vx,vy,vw,vh);
       else player.removeAttribute('style');
+      frame.style.aspectRatio=`${vw} / ${vh}`;
     }
-    heading.append(toggle);
-    set(!full);
-    return ()=>!zoom;
+    function place(x,y,w,h) {
+      Object.assign(player.style,{position:'absolute',left:`${-100*x/w}%`,top:`${-100*y/h}%`,
+        width:`${100*media.width/w}%`,height:`${100*media.height/h}%`,objectFit:'fill'});
+    }
   }
-  function buildSide(side,name,full=false) {
+  function connectPictures(original,tonepress,previous,region) {
+    const zoom=byId('detailZoom');
+    let full=Boolean(original.media.viewport&&previous?.full);
+    let detail=Boolean(region&&previous?.detail&&!full);
+    const toggle=original.media.viewport?button('',()=>{
+      full=!full;
+      if(full) detail=false;
+      show();
+    }):null;
+    if(toggle) {
+      toggle.className='preview-toggle';
+      original.head.append(toggle);
+    }
+    zoom.hidden=!region;
+    zoom.textContent=l('放大柱边','Zoom near pillar','柱の周りを拡大','기둥 주변 확대');
+    zoom.onclick=region?()=>{
+      detail=!detail;
+      if(detail) full=false;
+      show();
+    }:null;
+    function show() {
+      zoom.setAttribute('aria-pressed',String(detail));
+      if(toggle) {
+        toggle.setAttribute('aria-pressed',String(full));
+        toggle.textContent=full?l('放大工作画面','Show picture area'):l('查看完整界面','Show full interface');
+      }
+      fitPicture(original,detail?region:null,full);
+      fitPicture(tonepress,detail?region:null);
+    }
+    show();
+    return ()=>({full,detail});
+  }
+  function buildSide(side,name) {
     const record=current[side];
     const media=mediaFor(record);
     const article=node('article','','side');
@@ -211,17 +248,12 @@
     const figure=node('figure');
     const frame=node('div','','frame');
     let player=null;
-    let isFull=()=>false;
     if(media?.path) {
       if(tab==='video'&&frameTime===null) {
         player=video(media.path,!current.sync);
         player.setAttribute('aria-label',`${name} ${current.name} ${l('视频','video')}`);
         player.addEventListener('error',()=>{frame.append(node('p',l('当前浏览器无法解码此文件。可打开媒体文件使用系统播放器。','The browser could not decode this file. Try opening it in a system media player.')));},{once:true});
         frame.append(player);
-        if(online&&current.sync&&media.width&&media.height) {
-          if(side==='original'&&media.viewport) isFull=fitPicture(head,frame,player,media,full);
-          else frame.style.aspectRatio=`${media.width} / ${media.height}`;
-        }
       } else frame.append(photo(media.path,`${name} ${current.name}${number(frameTime)&&tab==='video'?` · ${sec(frameTime)}`:''}`));
     } else frame.append(node('p',noteMissing(record,media,side)));
     figure.append(frame);
@@ -256,7 +288,7 @@
       if(media.settings) parameters.append(node('pre',typeof media.settings==='string'?media.settings:JSON.stringify(media.settings,null,2)));
       article.append(parameters);
     }
-    return {article,player,isFull};
+    return {article,player,head,frame,media};
   }
 
   // Play both media timelines against confirmed source anchors and correct decoder drift.
@@ -500,6 +532,12 @@
     }
     if(current.sync) content.append(node('p',l('同步仅在两条时间轴的重叠区间内运行，中间时刻按已记录锚点插值。完整录屏保留可见界面及水印。',
       'Sync uses the overlapping source times and interpolates between the recorded anchors. The complete recording retains the watermark and interface.')));
+    if(current.detailRegion) {
+      const [x,y,w,h]=current.detailRegion;
+      const scope=l('局部放大时两侧使用同一源画面区域。','The close-up uses the same source rectangle on both sides.',
+        '拡大表示では左右に同じ素材範囲を表示します。','확대하면 양쪽에서 같은 소스 영역을 표시합니다.');
+      content.append(node('p',`${scope} x ${x}, y ${y} · ${w} × ${h} px`));
+    }
   }
   function render(previous) {
     player?.close();
@@ -521,19 +559,22 @@
     const same=tab==='photo'?current.samePhoto:frameTime===null?!!current.sync:frameVerified;
     const simpleStatus=tab==='photo'?'确认同一照片输入':frameTime===null?l('同一源视频时间，可同步播放','Same source video, ready to play together'):`同一源视频 ${sec(frameTime)} 的双边取帧`;
     const description=same?simpleStatus:`${available(current)} · ${tab==='photo'?'尚无可确认的同源照片对照':frameTime===null?l('尚无可确认的同源同步视频','No confirmed shared timeline is available'):chosenA&&chosenB?'两侧按目标播放头取帧，未证实为同一源帧':'当前时刻缺少一侧实测'}`;
-    const cue=current.loops?l('留意红色标记离开立柱后，向左拖行的碎块与残影。','Watch the blocks and traces pull left as the red marker clears the pillar.',
-      '赤いマーカーが柱を抜けたあとの、左に引きずられる断片と残像に注目してください。','빨간 표식이 기둥을 빠져나온 뒤 왼쪽으로 끌리는 조각과 잔상을 보세요.'):null;
+    const cue=current.loops?l('留意红色标记接近、经过和离开立柱时，亮片与残影的变化。','Watch the bright blocks and trails as the red marker approaches, crosses and clears the pillar.',
+      '赤いマーカーが柱に近づき、横切り、離れるときの明るい断片と残像に注目してください。','빨간 표식이 기둥에 접근하고 지나고 멀어질 때 밝은 조각과 잔상을 보세요.'):null;
     byId('effectStatus').textContent=[description,cue].filter(Boolean).join(' · ');
     const controls=byId('playerControls');
     controls.replaceChildren(); controls.hidden=true;
+    const zoom=byId('detailZoom');
+    if(zoom) {zoom.hidden=true;zoom.onclick=null;}
     renderFrames();
-    const original=buildSide('original',l('Mosh-Pro 原版','Mosh-Pro original'),previous?.full);
+    const original=buildSide('original',l('Mosh-Pro 原版','Mosh-Pro original'));
     const tonepress=buildSide('tonepress',[l('印相室','Tonepress'),online?current.version:localVersion].filter(Boolean).join(' '));
     sides.replaceChildren(original.article,tonepress.article);
     if(tab==='video'&&frameTime===null&&current.sync&&original.player&&tonepress.player) {
       const connected=connectPlayback(original.player,tonepress.player,current.sync,controls,previous,current.loops);
+      const readView=online?connectPictures(original,tonepress,previous,current.detailRegion):()=>({});
       player={
-        state:()=>({...connected.state(),full:original.isFull()}),
+        state:()=>({...connected.state(),...readView()}),
         pause:connected.pause,
         close:connected.close
       };
@@ -553,17 +594,17 @@
     byId('catalogLink').textContent=l('74 项逐个看','Browse all 74 effects');
     byId('reportLanguage').setAttribute('aria-label',l('语言','Language'));
     byId('reportLanguage').value=language;
-    const updates=coverage.v13?l('Data Mosh 新增 v13 成片','Data Mosh adds a v13 export',
-      'Data Mosh に v13 の書き出し動画を追加','Data Mosh에 v13 내보내기 영상 추가'):null;
+    const updates=coverage.v14?l('Data Mosh 新增 v14 成片','Data Mosh adds a v14 export',
+      'Data Mosh に v14 の書き出し動画を追加','Data Mosh에 v14 내보내기 영상 추가'):null;
     const intro=l(`同一测试视频 · ${summary.originalClips} 项原版访客录屏`,
       `One source video · ${summary.originalClips} Mosh-Pro visitor recordings`,
       `同一素材 · Mosh-Pro ゲスト録画 ${summary.originalClips} 本`,
       `동일 소스 · Mosh-Pro 게스트 녹화 ${summary.originalClips}개`);
     byId('summary').textContent=[intro,updates].filter(Boolean).join(' · ');
-    byId('onlineNotes').textContent=l('原版为访客界面实录，放大画面保留水印，完整界面随时可看。原版导出需登录。两侧从确认的源起点同步，录屏帧率可变，可能跳过源帧。',
-      'Mosh-Pro is a visitor preview recording. The picture view preserves the watermark, and the full interface remains available. Original export requires sign-in. Both videos start from the verified source start; the recording may skip source frames.',
-      'Mosh-Pro はゲスト画面の録画です。プレビュー拡大時も透かしを残し、画面全体に戻せます。書き出しにはログインが必要です。両側とも確認した素材の先頭から再生し、録画はフレームを飛ばす場合があります。',
-      'Mosh-Pro는 게스트 화면 녹화입니다. 확대 화면에도 워터마크를 유지하며 전체 화면으로 전환할 수 있습니다. 원본 내보내기는 로그인이 필요합니다. 양쪽 모두 확인된 소스 시작점에서 재생되며 녹화에서 일부 프레임이 건너뛰어질 수 있습니다.');
+    byId('onlineNotes').textContent=l('原版为访客界面实录，全幅源画面和完整界面均保留水印。原版导出需登录。两侧按确认的源时间同步，录屏可能跳过源帧。',
+      'Mosh-Pro is a visitor preview recording. The full picture and full interface retain its watermark. Export requires sign-in. Both sides sync to verified source times. The recording may skip source frames.',
+      'Mosh-Pro はゲスト画面の録画です。素材全体と操作画面全体の表示には透かしが残ります。書き出しにはログインが必要です。両側は確認済みの素材時刻で同期し、録画は一部のフレームを飛ばす場合があります。',
+      'Mosh-Pro는 게스트 화면 녹화입니다. 전체 영상과 전체 인터페이스에 워터마크가 표시됩니다. 내보내기에는 로그인이 필요합니다. 양쪽은 확인된 소스 시간에 맞춰 재생되며 녹화에서 일부 프레임이 건너뛰어질 수 있습니다.');
     byId('official').querySelector('summary').textContent=l('官方说明及示例','Official guide and examples');
     byId('source').querySelector('summary').textContent=l('测试输入与取帧依据','Test input and timing');
     byId('coverFooter').textContent=l('官方手册用于核实效果目录，右侧媒体是实际成片。','The official guide identifies the effects. The right side plays actual Tonepress exports.');
