@@ -260,6 +260,137 @@
     return offset;
   }
 
+  const chromaAt=(data,i)=>Math.max(data[i],data[i+1],data[i+2])-Math.min(data[i],data[i+1],data[i+2]);
+
+  function trailHighlights(base,frame,lumas,previous,block,vx,vy,flow,amount,energy) {
+    const {w,h,data}=frame;
+    const horizontal=Math.abs(vx)>=Math.abs(vy);
+    const velocity=horizontal?vx:vy;
+    const speed=Math.abs(velocity);
+    const visibility=clamp((energy-1.46-amount*.42)*2.2,0,1);
+    if(speed<.35 || flow===0 || visibility<.075) return null;
+    const sign=Math.sign(velocity);
+    const length=horizontal?w:h, breadth=horizontal?h:w;
+    if(breadth<8) return null;
+    const reach=clamp((energy-1.83-amount*.22)*2.45,0,1);
+    const minimum=Math.max(9,Math.round(block*1.52));
+    const index=(along,normal)=>horizontal?normal*w+along:along*w+normal;
+    const jump=horizontal?w:1;
+    const bands=[];
+
+    // Pick separated, high-contrast bands rather than extending every fine edge in a texture.
+    for(let lane=3;lane<breadth-3;lane++){
+      let start=-1,last=-1,holes=0,contrast=0,brightness=0,count=0;
+      for(let u=0;u<=length;u++){
+        let hit=false;
+        if(u<length){
+          const at=index(u,lane),here=lumas[at];
+          const flank=Math.min(lumas[at-jump*2],lumas[at+jump*2]);
+          hit=here>112 && here-flank>37 && chromaAt(data,at*4)<82 &&
+            Math.abs(here-previous[at])<37;
+          if(hit){
+            contrast+=here-flank;brightness+=here;count++;
+          }
+        }
+        if(hit){
+          if(start<0) start=u;
+          last=u;holes=0;
+        }else if(start>=0 && (u===length || ++holes>1)){
+          const span=last-start+1;
+          if(span>=minimum && brightness/count>135){
+            const midpoint=Math.round((start+last)/2),i=index(midpoint,lane)*4;
+            const stableContrast=contrast/count;
+            const currentContrast=luma(base,i)-Math.min(luma(base,i-jump*12),luma(base,i+jump*12));
+            const rank=stableContrast*.58+brightness/count*.2+Math.min(span,block*5)*.26+
+              Math.max(0,currentContrast)*.085+probability(lane,Math.floor(midpoint/block),81)*5;
+            bands.push({lane,start,last,span,rank,contrast:stableContrast});
+          }
+          start=-1;last=-1;holes=0;contrast=0;brightness=0;count=0;
+        }
+      }
+    }
+    if(!bands.length) return null;
+
+    bands.sort((a,b)=>b.rank-a.rank);
+    const accepted=[];
+    const separation=Math.max(7,block*(1.48+amount*.27));
+    const out=new Uint8ClampedArray(base);
+    for(const band of bands){
+      const {lane,start,last,span,contrast}=band;
+      if(accepted.some(other=>Math.abs(other.lane-lane)<separation &&
+        Math.min(last,other.last)-Math.max(start,other.start)>Math.min(span,other.span)*.41)) continue;
+      accepted.push(band);
+      const shape=probability(lane,Math.floor((start+last)/(4*block)),34);
+      const extra=block*clamp(speed,.65,1.8)*(.85+flow*.74);
+      const lengthToPaint=span*(.51+.45*reach)+extra*(.16+.99*reach)*(.69+shape*.45);
+      const overhang=block*(.22+reach*.60);
+      const pin=sign>0?last+overhang:start-overhang;
+      const tip=pin-sign*lengthToPaint;
+      const from=limit(Math.floor(Math.min(tip,pin)),length-1),to=limit(Math.ceil(Math.max(tip,pin)),length-1);
+      const depth=1+block*(.044+flow*.039)*(1+visibility*.46)+shape*.53;
+      for(let normal=Math.max(0,lane-Math.ceil(depth)-2);normal<=Math.min(breadth-1,lane+Math.ceil(depth)+2);normal++){
+        const offset=normal-lane;
+        for(let u=from;u<=to;u++){
+          const progress=clamp((pin-u)*sign/lengthToPaint,0,1);
+          const swell=Math.sin(progress*Math.PI);
+          const bend=(shape-.5)*swell*2.1+Math.sin(progress*5+shape*4.3)*swell*.62;
+          const thickness=depth*(.72+.28*swell)+(shape-.5)*progress;
+          const ink=Math.abs(offset-bend)<=thickness;
+          const rawLane=ink?lane:limit(lane+Math.sign(offset)*Math.min(3,Math.round(depth)+1),breadth-1);
+          const i=index(u,normal)*4;
+          const neutrality=clamp((72-chromaAt(base,i))/20,0,1);
+          if(base[i+3]<48 || neutrality===0 || chromaAt(data,i)>85) continue;
+          const sample=sign>0 ? last-progress*span*.89 : start+progress*span*.89;
+          const j=index(limit(Math.round(sample),length-1),rawLane)*4;
+          if(chromaAt(data,j)>82 || data[j+3]<48) continue;
+          const fade=Math.min(clamp((progress+.02)*16,0,1),clamp((1.025-progress)*12,0,1));
+          const weight=visibility*neutrality*fade*(ink?.86:.60)*data[j+3]/255;
+          if(weight<.025) continue;
+          const donor=luma(data,j),current=luma(base,i);
+          const signal=ink?Math.min(197,donor-(1-clamp((contrast-36)/108,0,1))*14):Math.min(current,donor);
+          const brightnessChange=(signal-current)*weight;
+          for(let k=0;k<3;k++)out[i+k]=base[i+k]+brightnessChange;
+        }
+      }
+    }
+    // Recover short interruptions where a fine ridge is still supported on both sides.
+    // Wider missing sections stay broken, preserving the decoded tear instead of tracing the source.
+    const repaired=[];
+    for(const band of bands){
+      const {lane,start,last,span}=band;
+      const overlaps=(other,distance)=>Math.abs(other.lane-lane)<distance &&
+        Math.min(last,other.last)-Math.max(start,other.start)>Math.min(span,other.span)*.5;
+      if(accepted.some(other=>overlaps(other,6)) || repaired.some(other=>overlaps(other,7))) continue;
+      const gaps=[];
+      let opening=-1,support=0;
+      for(let u=start;u<=last+1;u++){
+        const i=index(Math.min(last,u),lane)*4;
+        const peak=Math.max(luma(base,i-jump*4),luma(base,i),luma(base,i+jump*4));
+        const floor=(luma(base,i-jump*12)+luma(base,i+jump*12))*.5;
+        const original=lumas[i/4]-(lumas[i/4-jump*3]+lumas[i/4+jump*3])*.5;
+        const retained=u<=last && peak-floor>=Math.max(27,original*.49);
+        if(retained){
+          if(support>0 && opening>=start && u-opening<=block*.97) gaps.push([opening,u]);
+          support++;
+          opening=-1;
+        }else if(opening<0) opening=u;
+      }
+      if(support<span*.43 || support>span*.94 || !gaps.length) continue;
+      repaired.push(band);
+      for(const [from,to] of gaps) for(let u=from;u<to;u++){
+        for(let offset=-1;offset<=1;offset++){
+          const i=index(u,lane+offset)*4,j=index(u,lane)*4;
+          const neutrality=clamp((72-chromaAt(base,i))/20,0,1);
+          if(base[i+3]<48 || neutrality===0 || chromaAt(data,i)>85) continue;
+          const current=luma(out,i),donor=luma(data,j);
+          const gain=Math.max(0,donor-current)*visibility*neutrality*(offset===0?.67:.28);
+          for(let c=0;c<3;c++) out[i+c]+=gain;
+        }
+      }
+    }
+    return out;
+  }
+
   function dataMosh(frame,s,hist,delta) {
     const {w,h,data}=frame;
     const block=Math.max(5,Math.round(w/49*(.48+s.size*.12)));
@@ -361,6 +492,7 @@
           plateaus[i]=certainty*damage*flow*1.16*settle;
           ridge[i]=ridgeCenter(hist.result,w,h,cx,cy,block,texture.axis);
           ridgeSource[i]=ridgeCenter(data,w,h,cx,cy,block,texture.axis);
+
         }
       }
       track.memory[i]=Math.min(1,mix(track.memory[i],confidence,1-Math.exp(-6*delta)));
@@ -455,6 +587,8 @@
         result[i+3]=data[i+3];
       }
     }
+    // The transported highlights remain separate from the color prediction fed into later frames.
+    track.display=trailHighlights(result,frame,hist.lum,hist.prevLum,block,cameraX,cameraY,flow,amount,track.energy);
     return result;
   }
 
@@ -626,7 +760,7 @@
     const delta=s.time-hist.time;
     const sameResolution=hist.w===w && hist.h===h;
     if (sameResolution && Math.abs(delta)<1e-6) {
-      if(!hist.first) return write(ctx,frame,hist.result,s);
+      if(!hist.first) return write(ctx,frame,dataMoshType && hist.mosh?.display || hist.result,s);
       if(!dataMoshType) return passthrough(ctx,input,s);
       return;
     }
@@ -658,7 +792,7 @@
       if(!dataMoshType) passthrough(ctx,input,s);
       return;
     }
-    write(ctx,frame,hist.result,s);
+    write(ctx,frame,dataMoshType && hist.mosh?.display || hist.result,s);
   }
 
   function lumaMesh(input,ctx,s) {

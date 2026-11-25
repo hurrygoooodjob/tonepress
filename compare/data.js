@@ -18,10 +18,25 @@ window.comparisonData = {"version":"v11","localVersion":"v11","guide":"https://m
     },
     sync: prior.sync,
   };
-  dataMosh.tonepress = dataMosh.versions.v12.tonepress;
-  dataMosh.defaultVersion = 'v12';
-  // The source marker overlaps the pillar in F38–F59 at 24 fps. Include the residual blocks through 3.50 s.
-  dataMosh.occlusion = {start: 1.25, end: 3.5};
-  data.version = data.localVersion = 'v12';
+  dataMosh.versions.v13 = {
+    tonepress: {
+      ...prior.tonepress,
+      video: {
+        ...prior.tonepress.video,
+        path: 'media/mosh-data-mosh-tonepress-v13-video.mp4',
+        sha256: 'cd860769eb3d7a053ac76b573d5ae7dcf79b73b9775d85abffcbea634acd6047',
+        bytes: 3289730,
+        frameCount: 96,
+        notes: 'Rendered from all 96 consecutive source frames with the v13 Data Mosh pass. H.264 video with the original AAC source audio.',
+      },
+    },
+    sync: prior.sync,
+  };
+  dataMosh.tonepress = dataMosh.versions.v13.tonepress;
+  dataMosh.defaultVersion = 'v13';
+  // The source marker overlaps the pillar in frames 38–59 at 24 fps. Both loops include the fragments after exit.
+  dataMosh.loops = {crossing: {start: 1.25, end: 3.5}, exit: {start: 2.45, end: 3.5}};
+  data.version = data.localVersion = 'v13';
   data.coverage.v12 = 1;
+  data.coverage.v13 = 1;
 })();

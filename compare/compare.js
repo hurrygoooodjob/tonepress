@@ -61,7 +61,7 @@
   let tab='video';
   let frameTime=null;
   let player=null;
-  let openCrossing=online&&new URLSearchParams(location.search).get('loop')==='crossing';
+  let requestedLoop=online?new URLSearchParams(location.search).get('loop'):null;
   const chosenVersions=new Map();
 
   function node(tag, text, className) {
@@ -127,8 +127,9 @@
   function select(row,fromList=false) {
     const previous=current?.id===row.id?player?.state():null;
     current=versionRow(row);
-    const entry=openCrossing&&current.occlusion?{position:current.occlusion.start,looping:true}:null;
-    openCrossing=false;
+    const entry=current.loops&&Object.hasOwn(current.loops,requestedLoop)?
+      {position:current.loops[requestedLoop].start,loopRange:requestedLoop,looping:true}:null;
+    requestedLoop=null;
     resetFrame();
     renderList();
     render(previous??entry);
@@ -275,10 +276,12 @@
   }
   function clamp(value,min,max) {return Math.max(min,Math.min(max,value));}
 
-  function connectPlayback(left,right,sync,host,previous,occlusion) {
+  function connectPlayback(left,right,sync,host,previous,loops) {
+    const loopRange=previous?.loopRange||'crossing';
+    const bounds=loops?.[loopRange];
     const play=button(l('同步播放','Play together'),()=>running?pause():start());
     play.className='primary';
-    const reset=button(l('从开头','Restart'),()=>seek(looping?occlusion.start:sync.start));
+    const reset=button(l('从开头','Restart'),()=>seek(looping?bounds.start:sync.start));
     const range=node('input');
     range.type='range'; range.min=sync.start; range.max=sync.end; range.step='any';
     range.setAttribute('aria-label',l('共享源视频进度','Shared source-video position'));
@@ -294,9 +297,12 @@
     if([...sound.options].some(option=>option.value===previous?.sound)) sound.value=previous.sound;
     sound.addEventListener('change',setSound);
     setSound();
-    const loop=occlusion?button(l('循环看遮挡段','Loop pillar crossing','柱を横切る区間をループ','기둥을 지나는 구간 반복'),()=>{
+    const loopLabel=loopRange==='exit'?
+      l('循环看出柱段','Loop pillar exit','柱を抜けた区間をループ','기둥을 빠져나오는 구간 반복'):
+      l('循环看遮挡段','Loop pillar crossing','柱を横切る区間をループ','기둥을 지나는 구간 반복');
+    const loop=bounds?button(loopLabel,()=>{
       setLoop(!looping);
-      if(looping) seek(occlusion.start);
+      if(looping) seek(bounds.start);
     }):null;
     if(loop) loop.id='occlusionLoop';
     const note=node('span','','notes');
@@ -317,7 +323,7 @@
       if(loop) loop.setAttribute('aria-pressed',String(looping));
     }
     function playbackEnd() {
-      return looping?Math.min(occlusion.end,end):end;
+      return looping?Math.min(bounds.end,end):end;
     }
     function readCursor() {
       return running&&loaded.has(left)&&!left.seeking?clamp(sourceAt(sync.a,left.currentTime),sync.start,end):cursor;
@@ -345,7 +351,7 @@
       const t=sourceAt(sync.a,left.currentTime);
       if(t>=playbackEnd()-(looping?0:.012)||left.ended) {
         if(!looping) {pause(end);return;}
-        seek(occlusion.start);
+        seek(bounds.start);
         frame=requestAnimationFrame(tick);
         return;
       }
@@ -360,7 +366,7 @@
     async function start() {
       if(loaded.size!==2||disposed) return;
       note.textContent='';
-      if(cursor>=playbackEnd()-.025) seek(looping?occlusion.start:sync.start);
+      if(cursor>=playbackEnd()-.025) seek(looping?bounds.start:sync.start);
       const turn=++attempt;
       try {
         running=true;
@@ -383,7 +389,7 @@
         if(end<=sync.start) note.textContent=l('解码时长与采集锚点不重叠。','The decoded durations do not overlap on the shared timeline.');
         else {
           play.disabled=reset.disabled=range.disabled=false;
-          if(loop) loop.disabled=end<=occlusion.start;
+          if(loop) loop.disabled=end<=bounds.start;
           if(loop?.disabled) setLoop(false);
           seek(cursor);
           if(previous?.running) start();
@@ -395,7 +401,7 @@
     setLoop(looping);
     range.addEventListener('input',()=>{
       const value=Number(range.value);
-      if(looping&&(value<occlusion.start||value>=playbackEnd())) setLoop(false);
+      if(looping&&(value<bounds.start||value>=playbackEnd())) setLoop(false);
       seek(value);
     });
     sources.forEach((source,i)=>{
@@ -405,7 +411,7 @@
     });
     show(cursor);
     return {
-      state:()=>({position:readCursor(),running:running||loaded.size<2&&Boolean(previous?.running),sound:sound.value,looping}),
+      state:()=>({position:readCursor(),running:running||loaded.size<2&&Boolean(previous?.running),sound:sound.value,looping,loopRange}),
       pause,
       close:()=>{disposed=true;pause();}
     };
@@ -515,8 +521,8 @@
     const same=tab==='photo'?current.samePhoto:frameTime===null?!!current.sync:frameVerified;
     const simpleStatus=tab==='photo'?'确认同一照片输入':frameTime===null?l('同一源视频时间，可同步播放','Same source video, ready to play together'):`同一源视频 ${sec(frameTime)} 的双边取帧`;
     const description=same?simpleStatus:`${available(current)} · ${tab==='photo'?'尚无可确认的同源照片对照':frameTime===null?l('尚无可确认的同源同步视频','No confirmed shared timeline is available'):chosenA&&chosenB?'两侧按目标播放头取帧，未证实为同一源帧':'当前时刻缺少一侧实测'}`;
-    const cue=current.occlusion?l('留意红色标记经过条纹立柱时留下的残影，以及它离开立柱后的碎块。','Watch the red marker pass behind the striped pillar and the fragments that linger afterward.',
-      '赤いマーカーが縞の柱の後ろを通り過ぎたあとに残る断片に注目してください。','빨간 표식이 줄무늬 기둥 뒤를 지나고 나서 남는 조각을 보세요.'):null;
+    const cue=current.loops?l('留意红色标记离开立柱后，向左拖行的碎块与残影。','Watch the blocks and traces pull left as the red marker clears the pillar.',
+      '赤いマーカーが柱を抜けたあとの、左に引きずられる断片と残像に注目してください。','빨간 표식이 기둥을 빠져나온 뒤 왼쪽으로 끌리는 조각과 잔상을 보세요.'):null;
     byId('effectStatus').textContent=[description,cue].filter(Boolean).join(' · ');
     const controls=byId('playerControls');
     controls.replaceChildren(); controls.hidden=true;
@@ -525,7 +531,7 @@
     const tonepress=buildSide('tonepress',[l('印相室','Tonepress'),online?current.version:localVersion].filter(Boolean).join(' '));
     sides.replaceChildren(original.article,tonepress.article);
     if(tab==='video'&&frameTime===null&&current.sync&&original.player&&tonepress.player) {
-      const connected=connectPlayback(original.player,tonepress.player,current.sync,controls,previous,current.occlusion);
+      const connected=connectPlayback(original.player,tonepress.player,current.sync,controls,previous,current.loops);
       player={
         state:()=>({...connected.state(),full:original.isFull()}),
         pause:connected.pause,
@@ -547,8 +553,8 @@
     byId('catalogLink').textContent=l('74 项逐个看','Browse all 74 effects');
     byId('reportLanguage').setAttribute('aria-label',l('语言','Language'));
     byId('reportLanguage').value=language;
-    const updates=coverage.v12?l('Data Mosh 新增 v12 成片','Data Mosh adds a v12 export',
-      'Data Mosh に v12 の書き出し動画を追加','Data Mosh에 v12 내보내기 영상 추가'):null;
+    const updates=coverage.v13?l('Data Mosh 新增 v13 成片','Data Mosh adds a v13 export',
+      'Data Mosh に v13 の書き出し動画を追加','Data Mosh에 v13 내보내기 영상 추가'):null;
     const intro=l(`同一测试视频 · ${summary.originalClips} 项原版访客录屏`,
       `One source video · ${summary.originalClips} Mosh-Pro visitor recordings`,
       `同一素材 · Mosh-Pro ゲスト録画 ${summary.originalClips} 本`,

@@ -15,7 +15,7 @@
   function loadDataMoshFrames() {
     if(!dataMoshFrames) {
       const image=new Image();
-      image.src='data-mosh-v12.png';
+      image.src='data-mosh-v13.png';
       dataMoshFrames=image.decode().then(()=>image).catch(error=>{dataMoshFrames=null;throw error;});
     }
     return dataMoshFrames;
@@ -23,7 +23,7 @@
   async function render() {
     const serial=++ticket,r=rows[index],label=dict[lang];
     const updated=r.id==='mosh-data-mosh'&&frame>0;
-    const version=updated?'v12':'v11';
+    const version=updated?'v13':'v11';
     document.documentElement.lang=lang==='zh'?'zh-CN':lang;
     $('language').value=lang;$('name').textContent=r.name;$('effect').value=r.id;
     $('group').textContent=(index+1)+' / '+rows.length+' · '+r.group;
@@ -33,7 +33,7 @@
     $('origTime').textContent=frame?label.reference+' · '+r.clock[frame-1].toFixed(3)+' s':label.still;
     $('localTime').textContent=frame?label.output+' · '+frame.toFixed(3)+' s':label.still;
     const notes={
-      ...(updated?{'mosh-data-mosh':{en:'These three stills are from the v12 export. Watch the full comparison to see the red marker pass behind the striped pillar.',zh:'这三张视频帧来自 v12 成片。打开连续对照，可看到红色标记经过条纹立柱的过程。',ja:'この3枚は v12 の書き出し動画のコマです。赤いマーカーが縞の柱を横切る動きは動画比較で確認できます。',ko:'이 세 장은 v12 내보내기 영상의 프레임입니다. 빨간 표식이 줄무늬 기둥 뒤를 지나는 모습은 동영상 비교에서 확인할 수 있습니다.'}}:{}),
+      ...(updated?{'mosh-data-mosh':{en:'These three stills are from the v13 export. Open the motion comparison to follow the fragments after the marker clears the pillar.',zh:'这三张视频帧来自 v13 成片。打开动态对照可查看红色标记出柱后留下的碎块。',ja:'この3枚は v13 の書き出し動画のコマです。動画比較では、マーカーが柱を抜けたあとの断片を確認できます。',ko:'이 세 장은 v13 내보내기 영상의 프레임입니다. 동영상 비교에서 표식이 기둥을 빠져나온 뒤 남는 조각을 확인할 수 있습니다.'}}:{}),
       'mosh-feedback':{en:'Watch the fading copies behind the target. The default now keeps the source colors, zoom and rotation neutral.',zh:'留意红色标记身后的几层淡影。新版的默认缩放与旋转保持中性，拖影保留原色。',ja:'マーカーの後ろに重なる薄い残像を確認できます。初期状態では色、倍率、回転を変えません。',ko:'표식 뒤로 겹쳐지는 옅은 잔상을 보세요. 기본 설정에서 원색과 크기, 회전이 유지됩니다.'},
       'mosh-slit-scan':{en:'Follow the target through eight vertical slices. The newest slice is on the left, with earlier frames towards the right.',zh:'跟着标记穿过八条竖向切片。左边取最新画面，越往右取到的帧越早。',ja:'8本の縦帯を通るマーカーを追ってください。左側が新しく、右に行くほど古いフレームです。',ko:'표식이 여덟 개의 세로 띠를 지나는 모습을 보세요. 왼쪽이 가장 최근 프레임이고 오른쪽으로 갈수록 이전 프레임입니다.'},
       'mosh-super8':{en:'The reference was captured after the film assets loaded. Look at the film gate, dust and light leaks at the edges.',zh:'这里取的是原版胶片素材加载完成后的画面。可以重点比较片门、灰尘以及画面边缘的漏光。',ja:'フィルム素材の読み込み後に記録しました。フィルムゲート、ほこり、端の光漏れを比較できます。',ko:'원본 필름 소재가 로드된 뒤 캡처했습니다. 필름 게이트와 먼지, 가장자리의 빛샘을 비교하세요.'},
@@ -41,7 +41,8 @@
     };
     $('note').textContent=(notes[r.id]?.[lang] ? notes[r.id][lang]+' ' : '')+(frame?label.videoNote:label.stillNote);
     const motionIds=['mosh-data-mosh','mosh-feedback','mosh-slit-scan'];
-    document.querySelector('a[data-t="play"]').href=motionIds.includes(r.id)?'../#'+r.id:'../';
+    document.querySelector('a[data-t="play"]').href=r.id==='mosh-data-mosh'?
+      '../?loop=exit#'+r.id:motionIds.includes(r.id)?'../#'+r.id:'../';
     const url=new URL(location.href);url.searchParams.set('effect',r.id);url.searchParams.set('frame',frame);history.replaceState(null,'',url);
     $('status').textContent=label.loading;
     try{
